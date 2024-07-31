@@ -1,6 +1,9 @@
 using SimpleContinuation
 using Test
+using SafeTestsets
 
-@testset "SimpleContinuation.jl" begin
-    # Write your tests here.
+@time begin
+    @time @safetestset "Functions" begin
+        include("test_functions.jl")
+    end
 end
