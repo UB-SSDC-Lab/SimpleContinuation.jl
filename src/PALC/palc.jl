@@ -1,12 +1,11 @@
-# Predictor type flags
-abstract type AbstractPredictor end
-struct Bordered <: AbstractPredictor end
-
 # Struct for storing all information for the PALC algorithm
 # (includes algorithm linear and nonlinear solve dependancies)
 struct PALC{P, LS, NLS, NTC}
     # Continuation parameters
     θ::Float64
+
+    # Perturbation scale factor for computing the initial tangent
+    ϵλ::Float64
 
     # Numerical method options
     linsolve::LS
@@ -16,6 +15,7 @@ struct PALC{P, LS, NLS, NTC}
     function PALC(; 
         predicter   = Bordered(),
         θ           = 0.5,
+        ϵλ          = 1e-6,
         linesearch  = LiFukushimaLineSearch(), 
         linsolve    = SVDFactorization(), 
         termcond    = AbsSafeBestTerminationMode(),
@@ -36,7 +36,7 @@ struct PALC{P, LS, NLS, NTC}
 
         # Construct and return PALC
         new{typeof(predicter), typeof(linsolve), typeof(nls), typeof(termcond)}(
-            θ, linsolve, nls, termcond,
+            θ, ϵλ, linsolve, nls, termcond,
         )
     end
 end

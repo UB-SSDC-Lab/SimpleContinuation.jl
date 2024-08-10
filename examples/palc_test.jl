@@ -55,6 +55,7 @@ cache = continuation(
     ds0         = 0.01,
     dsmin       = 1e-3,
     dsmax       = 0.1,
+    trace       = ContinuationAndNewtonSteps(),
 )
 
 fig = Figure()

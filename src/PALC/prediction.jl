@@ -1,7 +1,6 @@
 
 # ===== Bordered Predictor
-
-function palc_prediction!(cache::PALCCache, alg::PALC{Bordered}, p::ContinuationProblem, solvers)
+function palc_prediction!(cache::PALCCache, alg::PALC{Bordered}, p::ContinuationProblem, solvers, trace)
     # Fill bordered matrix
     set_boardered_matrix!(cache, p)
 
@@ -14,6 +13,9 @@ function palc_prediction!(cache::PALCCache, alg::PALC{Bordered}, p::Continuation
     # Set the new tangent, making sure we keep moving in the same direction
     scale_predicted_tangent!(x, cache)
     update_tangent!(cache, x)
+
+    # Print trace if desired
+    print_prediction_trace(cache, trace)
 
     return nothing
 end
@@ -50,3 +52,14 @@ function set_boardered_matrix!(cache::PALCCache, p::ContinuationProblem)
 
     return nothing
 end
+
+# Just doing nothing for now in all caes as I'm not really sure if there's any relevant 
+# information to print here (we're already going to print the predicted update to λ
+# in the correction step)
+function print_prediction_trace(cache::PALCCache, trace::Silent)
+    return nothing
+end
+function print_prediction_trace(cache::PALCCache, trace::NonSilentTraceLevel)
+    return nothing
+end
+

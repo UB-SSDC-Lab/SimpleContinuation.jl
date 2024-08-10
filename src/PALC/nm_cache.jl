@@ -74,7 +74,7 @@ get_lp_cache(solvers::PALCSolverCache) = solvers.lp
 get_natural_nlp_cache(solvers::PALCSolverCache) = solvers.n_nlp
 get_palc_nlp_cache(solvers::PALCSolverCache) = solvers.palc_nlp
 
-# ===== Utilities
+# ===== Linear Problem Utilities
 function solve_lp!(solvers::PALCSolverCache)
     sol = solve!(solvers.lp)
     return sol.u
@@ -84,23 +84,54 @@ function set_lp_matrix!(solvers::PALCSolverCache, A)
     return nothing
 end
 
-function solve_natural_nlp!(solvers::PALCSolverCache, u0, verbose)
+# ===== Nonlinear Problem Utilities
+function solve_natural_nlp!(solvers::PALCSolverCache, u0, trace)
     reinit!(solvers.n_nlp, u0)
     for i in 1:solvers.nlp_iters
+        # Take newton step
         step!(solvers.n_nlp)
+
+        # Print trace if desired
+        print_natural_solve_trace(solvers, trace)
+
         if !NonlinearSolve.not_terminated(solvers.n_nlp)
             break
         end
     end
     return NonlinearSolve.get_u(solvers.n_nlp), solvers.n_nlp.retcode
 end
-function solve_palc_nlp!(solvers::PALCSolverCache, uλ0, verbose)
+function solve_palc_nlp!(solvers::PALCSolverCache, uλ0, trace)
     reinit!(solvers.palc_nlp, uλ0)
     for i in 1:solvers.nlp_iters
+        # Take newton step
         step!(solvers.palc_nlp)
+
+        # Print trace if desired
+        print_palc_solve_trace(solvers, trace)
+
         if !NonlinearSolve.not_terminated(solvers.palc_nlp)
             break
         end
     end
     return NonlinearSolve.get_u(solvers.palc_nlp), solvers.palc_nlp.retcode
+end
+
+function print_natural_solve_trace(solvers::PALCSolverCache, trace)
+    return nothing
+end
+function print_natural_solve_trace(solvers::PALCSolverCache, trace::ContinuationAndNewtonSteps)
+    nsteps = solvers.n_nlp.stats.nsteps
+    fnorm  = norm(solvers.n_nlp.fu)
+    println("  $nsteps\t$fnorm")
+    return nothing
+end
+
+function print_palc_solve_trace(solvers::PALCSolverCache, trace)
+    return nothing
+end
+function print_palc_solve_trace(solvers::PALCSolverCache, trace::ContinuationAndNewtonSteps)
+    nsteps = solvers.palc_nlp.stats.nsteps
+    fnorm  = norm(solvers.palc_nlp.fu)
+    println("  $nsteps\t$fnorm")
+    return nothing
 end

@@ -1,5 +1,5 @@
 
-function palc_correction!(cache, alg, p::ContinuationProblem, solvers, dsmin, dsmax, verbose = 0)
+function palc_correction!(cache, alg, p::ContinuationProblem, solvers, dsmin, dsmax, trace)
     # Get cache variables 
     θ       = cache.θ
     u0      = cache.u0
@@ -30,15 +30,19 @@ function palc_correction!(cache, alg, p::ContinuationProblem, solvers, dsmin, ds
             cache.ds    = (λmin - λ0) / δλ0
             uλpred[end] = λmin
             hit_bnd     = λmin
+            print_correction_trace(cache, trace, 2)
         elseif uλpred[end] > λmax
             cache.ds    = (λmax - λ0) / δλ0
             uλpred[end] = λmax
             hit_bnd     = λmax
+            print_correction_trace(cache, trace, 2)
+        else
+            print_correction_trace(cache, trace, 1)
         end
         uλpred[1:n] .= u0 .+ cache.ds.*δu0
 
         # Solve the palc nonlinear problem
-        uλ, retcode = solve_palc_nlp!(solvers, uλpred, verbose)
+        uλ, retcode = solve_palc_nlp!(solvers, uλpred, trace)
 
         # Check if successful
         if SciMLBase.successful_retcode(retcode)
@@ -53,12 +57,18 @@ function palc_correction!(cache, alg, p::ContinuationProblem, solvers, dsmin, ds
                 # Push solution and set done
                 set_successful_iterate!(cache, uλ) 
                 done = true
+
+                # Print trace if desired
+                print_correction_trace(cache, trace, 3)
             else
                 # Update cache without pushing solution to curve
                 set_successful_iterate!(cache, uλ, false)
 
+                # Print trace if desired
+                print_correction_trace(cache, trace, 3)
+
                 # Target solution on boundary
-                flag = palc_target_solution_on_boundary!(cache, hit_bnd, solvers, verbose)
+                flag = palc_target_solution_on_boundary!(cache, hit_bnd, solvers, trace)
 
                 # If targeting solution on boundary was successful, we're done. Otherwise, reduce ds
                 if flag
@@ -88,6 +98,26 @@ function palc_correction!(cache, alg, p::ContinuationProblem, solvers, dsmin, ds
     return success, !isnan(hit_bnd)
 end
 
+function print_correction_trace(cache::PALCCache, trace::Silent, stage)
+    return nothing
+end
+function print_correction_trace(cache::PALCCache, trace::NonSilentTraceLevel, stage)
+    if stage == 1
+        println("Beginning PALC correction: λ = $(cache.uλpred[end]) (predict)")
+    elseif stage == 2
+        println("Beginning PALC correction: λ = $(cache.uλpred[end]) (predict - clamped to boundary)")
+    elseif stage == 3
+        println("Correction successful: λ = $(cache.uλ0[end])")
+    elseif stage == 4
+        println("Beginning natural correction: λ = $(cache.λn)")
+    elseif stage == 5
+        println("Natural continuation successful")
+    elseif stage == 6
+        println("Natural continuation failed")
+    end
+    return nothing
+end
+
 function scale_and_clamp_ds!(cache, scale, dsmin, dsmax)
     sign_ds = sign(cache.ds)
     abs_ds  = abs(cache.ds)
@@ -96,16 +126,25 @@ function scale_and_clamp_ds!(cache, scale, dsmin, dsmax)
     return nothing
 end
 
-function palc_target_solution_on_boundary!(cache, λ0, solvers, verbose = 0)
+function palc_target_solution_on_boundary!(cache, λ0, solvers, trace)
     # Set natural continuation parameter
     set_natural_continuation_parameter!(cache, λ0)
 
+    # Print trace if desired
+    print_correction_trace(cache, trace, 4)
+
     # Solve the natural continuation problem
-    usol, retcode = solve_natural_nlp!(solvers, cache.u0, verbose)
+    usol, retcode = solve_natural_nlp!(solvers, cache.u0, trace)
 
     success_flag = SciMLBase.successful_retcode(retcode)
     if success_flag
         set_successful_iterate!(cache, usol, λ0)
+
+        # Print trace if desired
+        print_correction_trace(cache, trace, 5)
+    else
+        # Print trace if desired
+        print_correction_trace(cache, trace, 6)
     end
     return success_flag
 end

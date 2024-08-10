@@ -8,7 +8,7 @@ function continuation(
     max_cont_steps  = 1000,
     newton_iter     = 10,
     newton_tol      = 1e-10,
-    verbose         = 0,
+    trace           = Silent(),
 )
     # Construct PALC Cache
     cache = PALCCache(p, alg, ds0)
@@ -17,19 +17,28 @@ function continuation(
     solvers = PALCSolverCache(p, alg, cache, newton_iter, newton_tol)
 
     # Initialize continuation
-    initialize_palc!(cache, alg, p, solvers)
+    initialize_palc!(cache, alg, p, solvers, trace)
 
     # Continuation loop
-    continuation!(cache, alg, p, solvers, dsmin, dsmax, max_cont_steps, verbose)
+    continuation!(cache, alg, p, solvers, dsmin, dsmax, max_cont_steps, trace)
     if both_sides
         prepare_continuation_in_reverse_direction!(cache, ds0)
-        continuation!(cache, alg, p, solvers, dsmin, dsmax, max_cont_steps, verbose)
+        continuation!(cache, alg, p, solvers, dsmin, dsmax, max_cont_steps, trace)
     end
 
     return cache
 end
 
-function continuation!(cache::PALCCache, alg::PALC, p::ContinuationProblem, solvers::PALCSolverCache, dsmin, dsmax, max_cont_steps, verbose)
+function continuation!(
+    cache::PALCCache, 
+    alg::PALC, 
+    p::ContinuationProblem, 
+    solvers::PALCSolverCache, 
+    dsmin, 
+    dsmax, 
+    max_cont_steps, 
+    trace,
+)
     # Continuation loop
     iter    = 0
     done    = false
@@ -38,10 +47,10 @@ function continuation!(cache::PALCCache, alg::PALC, p::ContinuationProblem, solv
         iter += 1
 
         # Perform prediction step
-        palc_prediction!(cache, alg, p, solvers)
+        palc_prediction!(cache, alg, p, solvers, trace)
 
         # Perform correction step
-        success, hit_bnd = palc_correction!(cache, alg, p, solvers, dsmin, dsmax)
+        success, hit_bnd = palc_correction!(cache, alg, p, solvers, dsmin, dsmax, trace)
 
         if iter >= max_cont_steps
             done = true
@@ -68,55 +77,5 @@ function prepare_continuation_in_reverse_direction!(cache::PALCCache, ds0)
     # Flip elements in br
     reverse!(cache.br)
 
-    return nothing
-end
-
-function initialize_palc!(cache::PALCCache, alg::PALC, p::ContinuationProblem, solvers::PALCSolverCache, verbose = 0)
-    # Get incormation from the problem
-    u0 = p.u0
-    λ0 = p.λ0
-
-    # Make sure our current iterate is the initial guess provided by user
-    set_successful_iterate!(cache, u0, λ0, false)
-
-    # Set natural continuation parameter
-    set_natural_continuation_parameter!(cache, λ0)
-
-    # Solve initial problem with user provided guess
-    usol, retcode = solve_natural_nlp!(solvers, u0, verbose)
-
-    # Update current iterate if solve successfull, otherwise error
-    if SciMLBase.successful_retcode(retcode)
-        set_successful_iterate!(cache, usol, λ0, true)
-    else
-        error("Initial solve failed with user provided guess!")
-    end
-
-    # Perturb the natural continuation parameter to construct initial tangent
-    # with secant method
-    λpert = 1e-6*cache.ds
-    perturb_natural_continuation_parameter!(cache, λpert)
-
-    # Resolve the problem with perturbed parameter
-    usol, retcode = solve_natural_nlp!(solvers, usol, verbose)
-
-    # Get the solution
-    if SciMLBase.successful_retcode(retcode)
-        # Compute and set the initial tangent
-        n           = length(u0)
-        u0          = cache.u0              # The current solution (from first solve)
-        δuλ0        = cache.δuλ0            # The predicted tangent direction
-
-        δuλ0[1:n]  .= usol .- cache.u0      # Setting secant direction
-        δuλ0[end]   = λpert
-
-        ninv        = 1.0 / norm(δuλ0)      # Scale secant direciton to unit vector
-        δuλ0      .*= ninv
-
-        update_tangent!(cache, δuλ0)  # Update the tangent direction in cache
-        cache.δuλ0_initial .= δuλ0          # Save initial tangent
-    else
-        error("Solve to compute initial tangent failed! Consider reducing perturbation size.")
-    end
     return nothing
 end
