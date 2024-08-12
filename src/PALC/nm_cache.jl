@@ -86,7 +86,20 @@ end
 
 # ===== Nonlinear Problem Utilities
 function solve_natural_nlp!(solvers::PALCSolverCache, u0, trace)
-    reinit!(solvers.n_nlp, u0)
+    # Get parameters that are getting reset when calling reinit!
+    reltol = solvers.n_nlp.termination_cache.reltol
+    abstol = solvers.n_nlp.termination_cache.abstol
+    maxiters = solvers.n_nlp.maxiters
+
+    # Reinitialize the nonlinear problem
+    reinit!(
+        solvers.n_nlp, u0; 
+        maxiters = maxiters,
+        abstol = abstol, 
+        reltol = reltol,
+    )
+
+    # Solve
     for i in 1:solvers.nlp_iters
         # Take newton step
         step!(solvers.n_nlp)
@@ -101,7 +114,20 @@ function solve_natural_nlp!(solvers::PALCSolverCache, u0, trace)
     return NonlinearSolve.get_u(solvers.n_nlp), solvers.n_nlp.retcode
 end
 function solve_palc_nlp!(solvers::PALCSolverCache, uλ0, trace)
-    reinit!(solvers.palc_nlp, uλ0)
+    # Get parameters that are getting reset when calling reinit!
+    reltol = solvers.n_nlp.termination_cache.reltol
+    abstol = solvers.n_nlp.termination_cache.abstol
+    maxiters = solvers.n_nlp.maxiters
+
+    # Reinitialize the nonlinear problem
+    reinit!(
+        solvers.palc_nlp, uλ0; 
+        maxiters = maxiters,
+        abstol = abstol, 
+        reltol = reltol,
+    )
+
+    # Solve
     for i in 1:solvers.nlp_iters
         # Take newton step
         step!(solvers.palc_nlp)

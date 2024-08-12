@@ -60,6 +60,7 @@ function print_prediction_trace(cache::PALCCache, trace::Silent)
     return nothing
 end
 function print_prediction_trace(cache::PALCCache, trace::NonSilentTraceLevel)
+    println("Computed boardered prediction.")
     return nothing
 end
 

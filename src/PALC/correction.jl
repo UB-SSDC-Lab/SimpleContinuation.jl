@@ -79,7 +79,7 @@ function palc_correction!(cache, alg, p::ContinuationProblem, solvers, dsmin, ds
                 end
             end
         else
-            if cache.ds == dsmin
+            if isapprox(abs(cache.ds),dsmin)
                 done    = true
                 success = false
             else
@@ -103,9 +103,12 @@ function print_correction_trace(cache::PALCCache, trace::Silent, stage)
 end
 function print_correction_trace(cache::PALCCache, trace::NonSilentTraceLevel, stage)
     if stage == 1
-        println("Beginning PALC correction: λ = $(cache.uλpred[end]) (predict)")
+        # Compute predicted change
+        δλ0 = cache.uλpred[end] - cache.λ0
+        println("Beginning PALC correction: λ = $(cache.uλpred[end]) [$δλ0] (predict)")
     elseif stage == 2
-        println("Beginning PALC correction: λ = $(cache.uλpred[end]) (predict - clamped to boundary)")
+        δλ0 = cache.uλpred[end] - cache.λ0
+        println("Beginning PALC correction: λ = $(cache.uλpred[end]) [$δλ0] (predict - clamped to boundary)")
     elseif stage == 3
         println("Correction successful: λ = $(cache.uλ0[end])")
     elseif stage == 4

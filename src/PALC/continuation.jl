@@ -54,6 +54,8 @@ function continuation!(
 
         if iter >= max_cont_steps
             done = true
+        elseif !success
+            done = true
         elseif success && hit_bnd
             done = true
         end
