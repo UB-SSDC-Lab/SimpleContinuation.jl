@@ -64,3 +64,28 @@ function print_prediction_trace(cache::PALCCache, trace::NonSilentTraceLevel)
     return nothing
 end
 
+# ===== Secant Predictor
+function palc_prediction!(cache::PALCCache, alg::PALC{Secant}, p::ContinuationProblem, solvers, trace)
+    # Set tangent direction with secant prediction
+    if length(cache.br) < 2
+        # Just use initial tangent so do nothing here...
+        return nothing
+    else
+        # Set directions
+        cache.δu0 .= cache.br[end][1] .- cache.br[end-1][1]
+        cache.δλ0  = cache.br[end][2]  - cache.br[end-1][2]
+
+        # Set full direction
+        n = length(cache.δu0)
+        cache.δuλ0[1:n] .= cache.δu0
+        cache.δuλ0[n+1]  = cache.δλ0
+
+        # Scale
+        nδuλ0 = norm(cache.δuλ0)
+        cache.δuλ0 ./= nδuλ0
+        cache.δu0   .= view(cache.δuλ0, 1:n)
+        cache.δλ0    = cache.δuλ0[n+1]
+
+        return nothing
+    end
+end

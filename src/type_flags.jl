@@ -10,3 +10,4 @@ struct ContinuationAndNewtonSteps <: NonSilentTraceLevel end
 # Continuation predictor types
 abstract type AbstractPredictor end
 struct Bordered <: AbstractPredictor end
+struct Secant <: AbstractPredictor end

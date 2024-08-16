@@ -8,10 +8,21 @@ struct PALCSolverCache{LP,NNLP,PNLP}
     n_nlp::NNLP     # For natural continuation solves
     palc_nlp::PNLP  # For PALC continuation solves
 
+    # Parameters for all newton solvers
     nlp_iters::Int
     nlp_tol::Float64
 
-    function PALCSolverCache(p::ContinuationProblem, alg::PALC, cache::PALCCache, newton_iter, newton_tol)
+    # PALC maximum resid
+    palc_max_resid::Float64 
+
+    function PALCSolverCache(
+        p::ContinuationProblem, 
+        alg::PALC, 
+        cache::PALCCache, 
+        newton_iter, 
+        newton_tol,
+        newton_max_resid,
+    )
         # Create linear problem cache
         lp = construct_lp_cache(alg, cache)
 
@@ -20,7 +31,12 @@ struct PALCSolverCache{LP,NNLP,PNLP}
             p, alg, cache, newton_iter, newton_tol,
         )
 
-        new{typeof(lp), typeof(n_nlp), typeof(palc_nlp)}(lp, n_nlp, palc_nlp, newton_iter, newton_tol)
+        new{typeof(lp), typeof(n_nlp), typeof(palc_nlp)}(
+            lp, n_nlp, palc_nlp, 
+            newton_iter, 
+            newton_tol, 
+            newton_max_resid,
+        )
     end
 end
 
@@ -115,9 +131,9 @@ function solve_natural_nlp!(solvers::PALCSolverCache, u0, trace)
 end
 function solve_palc_nlp!(solvers::PALCSolverCache, uλ0, trace)
     # Get parameters that are getting reset when calling reinit!
-    reltol = solvers.n_nlp.termination_cache.reltol
-    abstol = solvers.n_nlp.termination_cache.abstol
-    maxiters = solvers.n_nlp.maxiters
+    reltol = solvers.palc_nlp.termination_cache.reltol
+    abstol = solvers.palc_nlp.termination_cache.abstol
+    maxiters = solvers.palc_nlp.maxiters
 
     # Reinitialize the nonlinear problem
     reinit!(
@@ -126,6 +142,11 @@ function solve_palc_nlp!(solvers::PALCSolverCache, uλ0, trace)
         abstol = abstol, 
         reltol = reltol,
     )
+
+    # Check initial residual norm is below specified value
+    if solvers.palc_nlp.termination_cache.initial_objective > solvers.palc_max_resid
+        return NonlinearSolve.get_u(solvers.palc_nlp), solvers.palc_nlp.retcode
+    end
 
     # Solve
     for i in 1:solvers.nlp_iters

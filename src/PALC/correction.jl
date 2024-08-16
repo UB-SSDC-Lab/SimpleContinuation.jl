@@ -79,7 +79,7 @@ function palc_correction!(cache, alg, p::ContinuationProblem, solvers, dsmin, ds
                 end
             end
         else
-            if isapprox(abs(cache.ds),dsmin)
+            if abs(cache.ds) == dsmin
                 done    = true
                 success = false
             else

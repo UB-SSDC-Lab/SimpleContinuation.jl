@@ -47,7 +47,7 @@ function initialize_palc!(cache::PALCCache, alg::PALC, p::ContinuationProblem, s
         ninv        = 1.0 / norm(δuλ0)      # Scale secant direciton to unit vector
         δuλ0      .*= ninv
 
-        update_tangent!(cache, δuλ0)  # Update the tangent direction in cache
+        update_tangent!(cache, δuλ0)        # Update the tangent direction in cache
         cache.δuλ0_initial .= δuλ0          # Save initial tangent
     else
         error("Solve to compute initial tangent failed! Consider reducing perturbation size.")

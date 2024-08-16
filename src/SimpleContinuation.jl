@@ -23,7 +23,7 @@ include("PALC/nm_cache.jl")
 include("PALC/continuation.jl")
 
 export Silent, ContinuaitonSteps, ContinuationAndNewtonSteps
-export Bordered
+export Bordered, Secant
 
 export ContinuationFunction
 export ContinuationProblem
