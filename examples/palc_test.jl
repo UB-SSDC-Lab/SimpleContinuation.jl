@@ -3,6 +3,7 @@ using SimpleContinuation
 using DifferentiationInterface
 using Parameters
 using FastClosures
+using Infiltrator
 
 using GLMakie
 
@@ -41,6 +42,23 @@ zE0     = zeros(4)
 J       = @closure (J,F,z,E0) -> jacobian!(TMvf, F, J, AutoForwardDiff(), fill_vec!(zE0, z, E0), J_cache)
 Jz(J,F,z,E0) = jacobian!((y,x) -> TMvf(y,x,E0), F, J, AutoForwardDiff(), z)
 
+# Create termination callback
+cb_term_fun(u,λ) = λ + 3
+cb_term = TerminateContinuationCallback(cb_term_fun)
+
+# Create analysis callback
+fig = Figure(); ax = Axis(fig[1,1])
+pts = Observable(Vector{Point2f}(undef, 0))
+lines!(ax, pts)
+display(fig)
+an_fun(cache) = begin
+    pts[] = map(i -> Point2f(cache.br[i][2], cache.br[i][1][1]), 1:length(cache.br))
+    Makie.reset_limits!(ax)
+    sleep(0.1)
+    nothing
+end
+an_cb = AnalysisContinuationCallback(an_fun)
+
 # Form the problem
 cont_prob = ContinuationProblem(
     ContinuationFunction{Val{true}}(TMvf, Jz, J),
@@ -51,16 +69,18 @@ cont_prob = ContinuationProblem(
 
 cache = continuation(
     cont_prob, PALC();
-    both_sides  = true,
-    ds0         = 0.01,
-    dsmin       = 1e-3,
-    dsmax       = 0.1,
-    trace       = ContinuationAndNewtonSteps(),
+    both_sides      = true,
+    ds0             = 0.01,
+    dsmin           = 1e-3,
+    dsmax           = 0.1,
+    #term_callback   = cb_term,
+    #analysis_callback = an_cb,
+    trace           = ContinuationAndNewtonSteps(),
 )
 
-fig = Figure()
-ax = Axis(fig[1,1])
+# fig = Figure()
+# ax = Axis(fig[1,1])
 
-λs = map(i -> cache.br[i][2], 1:length(cache.br))
-Es = map(i -> cache.br[i][1][1], 1:length(cache.br))
-lines!(ax, λs, Es, color = :blue)
+# λs = map(i -> cache.br[i][2], 1:length(cache.br))
+# Es = map(i -> cache.br[i][1][1], 1:length(cache.br))
+# lines!(ax, λs, Es, color = :blue)

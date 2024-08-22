@@ -73,6 +73,11 @@ mutable struct PALCCache
     δu::Vector{Float64}     # The change in u for the corrent iteration during correction
     Ffun::Vector{Float64}   # Storage for the function residuals (not including hyperplane constraint)
     Jfun::Matrix{Float64}   # Storage for the function Jacobian (not including hyperplane constraint)
+
+    # PALC Callback Root-Find
+    u_0::Vector{Float64}
+    u_1::Vector{Float64}
+    u_t::Vector{Float64}
 end
 
 function PALCCache(p::ContinuationProblem, alg::PALC, ds0)
@@ -105,7 +110,16 @@ function PALCCache(p::ContinuationProblem, alg::PALC, ds0)
     Ffun    = similar(u0)
     Jfun    = Matrix{Float64}(undef, n, n + 1)
 
-    PALCCache(alg.θ, ds0, br, uλ0, u0c, λ0, λ0, bm, bb, δuλ0, δu0, 0.0, δuλ0_i, uλpred, δu, Ffun, Jfun)
+    # Allocate memory for regula-falsi root-find
+    u_0     = similar(u0)
+    u_1     = similar(u0)
+    u_t    = similar(u0)
+
+    PALCCache(
+        alg.θ, ds0, br, uλ0, u0c, λ0, λ0, bm, bb, 
+        δuλ0, δu0, 0.0, δuλ0_i, uλpred, δu, Ffun, Jfun,
+        u_0, u_1, u_t,
+    )
 end
 
 # Set natural continuation parameter as perturbed current parameter λ0 

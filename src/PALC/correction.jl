@@ -1,5 +1,8 @@
 
-function palc_correction!(cache, alg, p::ContinuationProblem, solvers, dsmin, dsmax, trace)
+function palc_correction!(
+    cache, alg, p::ContinuationProblem, solvers, 
+    dsmin, dsmax, term_callback, analysis_callback, trace,
+)
     # Get cache variables 
     θ       = cache.θ
     u0      = cache.u0
@@ -18,6 +21,8 @@ function palc_correction!(cache, alg, p::ContinuationProblem, solvers, dsmin, ds
     success  = true
     done     = false
     hit_bnd  = NaN
+    cb_trig  = false
+    rf_succ  = false
     while !done
         # Update attempts
         attempts += 1
@@ -46,6 +51,15 @@ function palc_correction!(cache, alg, p::ContinuationProblem, solvers, dsmin, ds
 
         # Check if successful
         if SciMLBase.successful_retcode(retcode)
+            # Check if callback triggered
+            cb_trig = check(term_callback, uλ, cache)
+
+            # If callback triggered, perform regula falsi root finding method and update uλ
+            if cb_trig
+                rf_succ = palc_target_callback_event!(uλ, cache, solvers, term_callback, trace)
+                hit_bnd = NaN # Reset since we're likely not stepping as far and will recheck 
+            end
+
             # Check if we crossed the boundary
             if uλ[end] < λmin 
                 hit_bnd = λmin
@@ -53,7 +67,11 @@ function palc_correction!(cache, alg, p::ContinuationProblem, solvers, dsmin, ds
                 hit_bnd = λmax
             end
 
-            if isnan(hit_bnd) 
+            if cb_trig && !rf_succ # Triggered callback but rootfind was unsuccessful
+                cb_trig = false
+                hit_bnd = NaN
+                scale_and_clamp_ds!(cache, 0.5, dsmin, dsmax)
+            elseif isnan(hit_bnd)
                 # Push solution and set done
                 set_successful_iterate!(cache, uλ) 
                 done = true
@@ -91,11 +109,18 @@ function palc_correction!(cache, alg, p::ContinuationProblem, solvers, dsmin, ds
 
     # Update ds is we were successful
     # Consider only updating is successful in < n number of attempts
-    if success
-        scale_and_clamp_ds!(cache, 1.2, dsmin, dsmax)
-    end
+    success && scale_and_clamp_ds!(cache, 1.2, dsmin, dsmax)
 
-    return success, !isnan(hit_bnd)
+    # Update the callback if we were successfull
+    success && update!(term_callback, cache)
+
+    # Call the analysis callback if we were successful
+    success && call!(analysis_callback, cache)
+
+    # Handle termination flag
+    terminate_continuation = !isnan(hit_bnd) || cb_trig
+
+    return success, terminate_continuation
 end
 
 function print_correction_trace(cache::PALCCache, trace::Silent, stage)
@@ -103,16 +128,32 @@ function print_correction_trace(cache::PALCCache, trace::Silent, stage)
 end
 function print_correction_trace(cache::PALCCache, trace::NonSilentTraceLevel, stage)
     if stage == 1
-        # Compute predicted change
         δλ0 = cache.uλpred[end] - cache.λ0
-        println("Beginning PALC correction: λ = $(cache.uλpred[end]) [$δλ0] (predict)")
+        @printf "Beginning PALC correction: λ = %.5e [%.1e] (predict)\n" cache.uλpred[end] δλ0
     elseif stage == 2
         δλ0 = cache.uλpred[end] - cache.λ0
-        println("Beginning PALC correction: λ = $(cache.uλpred[end]) [$δλ0] (predict - clamped to boundary)")
+        @printf "Beginning PALC correction: λ = %.5e [%.1e] (predict - clamped to boundary)\n" cache.uλpred[end] δλ0
     elseif stage == 3
-        println("Correction successful: λ = $(cache.uλ0[end])")
+        # Compute angle between prediction and actual change
+        θ = if length(cache.br) > 1
+            δu  = cache.u_0
+            δu .= cache.br[end][1] .- cache.br[end-1][1]
+            δλ  = cache.br[end][2]  - cache.br[end-1][2]
+            if cache.ds < 0.0
+                δu .*= -1.0
+                δλ   = -δλ
+            end
+            dp  = dot(δu, cache.δu0) + δλ*cache.δλ0
+            r   = dp / (sqrt(dot(δu,δu) + δλ^2)*norm(cache.δuλ0))
+            θ   = acosd(clamp(r, -1.0, 1.0))
+        else
+            NaN
+        end
+
+        @printf "Correction successful: λ = %.5e (θ = %3.2e°)\n" cache.uλ0[end] θ
     elseif stage == 4
-        println("Beginning natural correction: λ = $(cache.λn)")
+        #println("Beginning natural correction: λ = $(cache.λn)")
+        @printf "Beginning natural correction: λ = %.5e\n" cache.λn
     elseif stage == 5
         println("Natural continuation successful")
     elseif stage == 6
@@ -129,6 +170,7 @@ function scale_and_clamp_ds!(cache, scale, dsmin, dsmax)
     return nothing
 end
 
+# Function to target boundary with natural continuation
 function palc_target_solution_on_boundary!(cache, λ0, solvers, trace)
     # Set natural continuation parameter
     set_natural_continuation_parameter!(cache, λ0)
@@ -150,6 +192,62 @@ function palc_target_solution_on_boundary!(cache, λ0, solvers, trace)
         print_correction_trace(cache, trace, 6)
     end
     return success_flag
+end
+
+# Function to find when callback = 0 with regula falsi method
+function palc_target_callback_event!(uλ, cache, solvers, callback, trace)
+    # Get callback value at boundaries
+    f_0 = callback.val_0
+    f_1 = call!(callback, uλ, cache)
+
+    # Get parameter values at boundaries
+    λ_0 = cache.λ0
+    λ_1 = uλ[end]
+
+    # Get inputs at boundaries
+    u_0  = cache.u_0; u_1 = cache.u_1; u_t = cache.u_t
+    n    = length(uλ) - 1
+    u_0 .= cache.u0
+    u_1 .= view(uλ, 1:n)
+
+    # Begin loop
+    done    = false
+    success = false
+    while !done
+        λ_2  = λ_0 - f_0*(λ_1 - λ_0) / (f_1 - f_0)
+        u_t .= u_0 .+ ((λ_2 - λ_0) / (λ_1 - λ_0)).*(u_1 .- u_0)
+
+        set_natural_continuation_parameter!(cache, λ_2)
+        usol, retcode = solve_natural_nlp!(solvers, u_t, trace)
+
+        success_flag = SciMLBase.successful_retcode(retcode)
+        if success_flag
+            # Call the callback function
+            f_2 = call!(callback, usol, λ_2, cache)
+
+            if abs(f_2) <= callback.tol
+                # Set flags
+                done    = true
+                success = true
+
+                # Update iterate
+                uλ[1:n] .= usol
+                uλ[end]  = λ_2
+            elseif f_0*f_2 < 0
+                u_1 .= usol
+                λ_1  = λ_2
+                f_1  = f_2
+            else
+                u_0 .= usol
+                λ_0  = λ_2
+                f_0  = f_2
+            end
+        else
+            done = true
+        end
+    end
+
+    return success
 end
 
 # Hyperplane constraint and jacobian

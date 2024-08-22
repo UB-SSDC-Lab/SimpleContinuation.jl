@@ -9,6 +9,8 @@ function continuation(
     newton_iter         = 10,
     newton_tol          = 1e-10,
     newton_max_resid    = 1.0,
+    term_callback       = nothing, 
+    analysis_callback   = nothing,
     trace               = Silent(),
 )
     # Construct PALC Cache
@@ -26,10 +28,10 @@ function continuation(
     initialize_palc!(cache, alg, p, solvers, trace)
 
     # Continuation loop
-    continuation!(cache, alg, p, solvers, dsmin, dsmax, max_cont_steps, trace)
+    continuation!(cache, alg, p, solvers, dsmin, dsmax, max_cont_steps, term_callback, analysis_callback, trace)
     if both_sides
         prepare_continuation_in_reverse_direction!(cache, ds0)
-        continuation!(cache, alg, p, solvers, dsmin, dsmax, max_cont_steps, trace)
+        continuation!(cache, alg, p, solvers, dsmin, dsmax, max_cont_steps, term_callback, analysis_callback, trace)
     end
 
     return cache
@@ -43,8 +45,13 @@ function continuation!(
     dsmin, 
     dsmax, 
     max_cont_steps, 
+    term_callback,
+    analysis_callback,
     trace,
 )
+    # Initialize the callback
+    initialize!(term_callback, cache)
+
     # Continuation loop
     iter    = 0
     done    = false
@@ -56,7 +63,7 @@ function continuation!(
         palc_prediction!(cache, alg, p, solvers, trace)
 
         # Perform correction step
-        success, hit_bnd = palc_correction!(cache, alg, p, solvers, dsmin, dsmax, trace)
+        success, hit_bnd = palc_correction!(cache, alg, p, solvers, dsmin, dsmax, term_callback, analysis_callback, trace)
 
         if iter >= max_cont_steps
             done = true

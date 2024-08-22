@@ -25,7 +25,7 @@ function initialize_palc!(cache::PALCCache, alg::PALC, p::ContinuationProblem, s
 
     # Perturb the natural continuation parameter to construct initial tangent
     # with secant method
-    λpert = alg.ϵλ * cache.ds
+    λpert = alg.ϵλ * abs(cache.ds)
     perturb_natural_continuation_parameter!(cache, λpert)
 
     # Print trace if desired

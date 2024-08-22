@@ -3,6 +3,7 @@ module SimpleContinuation
 using FunctionWrappersWrappers
 using LinearAlgebra
 using FastClosures
+using Printf
 
 # Numerical methods
 using LinearSolve
@@ -16,6 +17,7 @@ include("problem.jl")
 
 # PALC algorithm
 include("PALC/palc.jl")
+include("PALC/callback.jl")
 include("PALC/initialization.jl")
 include("PALC/prediction.jl")
 include("PALC/correction.jl")
@@ -27,6 +29,8 @@ export Bordered, Secant
 
 export ContinuationFunction
 export ContinuationProblem
+
+export TerminateContinuationCallback, AnalysisContinuationCallback
 
 export PALC
 export continuation
