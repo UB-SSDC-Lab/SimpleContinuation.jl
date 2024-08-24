@@ -1,8 +1,9 @@
+abstract type AbstractContinuationFunction end
 
 # A container for user provided functions. For now, we're just 
 # going to handle functions involvng vectors and matrices of Float64s,
 # or views thereof. More functionality can be added later as needed.
-struct ContinuationFunction{has_full_J,FType,JuType,JλType,JType}
+struct ContinuationFunction{has_full_J,FType,JuType,JλType,JType} <: AbstractContinuationFunction
     f::FType
     Ju::JuType
     Jλ::JλType
@@ -127,12 +128,56 @@ struct ContinuationFunction{has_full_J,FType,JuType,JλType,JType}
     end
 end
 
+struct SparseContinuationFunction{FType,JuType,JType} <: AbstractContinuationFunction
+    f::FType
+    Ju::JuType
+    J::JType
+
+    Ju_prototype::SparseMatrixCSC{Float64,Int}
+    J_prototype::SparseMatrixCSC{Float64,Int}
+
+    function SparseContinuationFunction(
+        f::Fi, 
+        Ju::Jui, Ju_prototype::SparseMatrixCSC{Float64,Int}, 
+        J::Ji, J_prototype::SparseMatrixCSC{Float64,Int},
+    ) where {Fi <: Function, Jui <: Function, Ji <: Function}
+        # Construct input argument types
+        λT = Float64
+        VT = (
+            Vector{Float64},
+            SubArray{Float64,1,Vector{Float64},Tuple{UnitRange{Int}},true},
+        )
+        MT = SparseMatrixCSC{Float64,Int} 
+        fargtypes = (
+            Tuple{VT[1],VT[1],λT},
+            Tuple{VT[1],VT[2],λT},
+        )
+        Juargtypes = (
+            Tuple{MT,VT[1],VT[1],λT},
+            Tuple{MT,VT[1],VT[2],λT},
+        )
+        Jargtypes = (
+            Tuple{MT,VT[1],VT[1],λT},
+            Tuple{MT,VT[1],VT[2],λT},
+        )
+
+        # Construct function wrappers
+        fwrap   = FunctionWrappersWrapper(f, fargtypes, (Nothing,Nothing,))
+        Juwrap  = FunctionWrappersWrapper(Ju, Juargtypes, (Nothing,Nothing,))
+        Jwrap   = FunctionWrappersWrapper(J, Jargtypes, (Nothing,Nothing,))
+
+        new{typeof(fwrap),typeof(Juwrap),typeof(Jwrap)}(
+            fwrap, Juwrap, Jwrap, Ju_prototype, J_prototype,
+        )
+    end
+end
+
 # Function evaluation methods
 function eval_f!(
     du::Vector{Float64},
     u,
     λ::Float64,
-    cf::ContinuationFunction,
+    cf::AbstractContinuationFunction,
 )
     cf.f(du,u,λ)
     return nothing
@@ -140,7 +185,7 @@ end
 function eval_f!(
     du::Vector{Float64},
     uλ::Vector{Float64},
-    cf::ContinuationFunction,
+    cf::AbstractContinuationFunction,
 )
     # Get u and λ
     n = length(uλ)
@@ -196,6 +241,31 @@ function eval_Ju!(
     eval_Ju!(J,du,u,λ,cf)
     return nothing
 end
+function eval_Ju!(
+    J::SparseMatrixCSC{Float64,Int},
+    du::Vector{Float64},
+    u,
+    λ::Float64,
+    cf::SparseContinuationFunction,
+)
+    cf.Ju(J,du,u,λ)
+    return nothing
+end
+function eval_Ju!(
+    J::SparseMatrixCSC{Float64,Int},
+    du::Vector{Float64},
+    uλ::Vector{Float64},
+    cf::SparseContinuationFunction,
+)
+    # Get u and λ
+    n = length(uλ)
+    u = view(uλ,1:n-1)
+    λ = uλ[end]
+
+    # Eval
+    eval_Ju!(J,du,u,λ,cf)
+    return nothing
+end
 
 # Jacobian wrt u and λ methods
 function eval_J!(
@@ -230,6 +300,30 @@ function eval_J!(
     du::Vector{Float64},
     uλ::Vector{Float64},
     cf::ContinuationFunction,
+)
+    # Get u and λ
+    n = length(uλ)
+    u = view(uλ,1:n-1)
+    λ = uλ[end]
+
+    eval_J!(J,du,u,λ,cf)
+    return nothing
+end
+function eval_J!(
+    J::SparseMatrixCSC{Float64,Int},
+    du::Vector{Float64},
+    u,
+    λ::Float64,
+    cf::SparseContinuationFunction,
+)
+    cf.J(J,du,u,λ)
+    return nothing
+end
+function eval_J!(
+    J::SparseMatrixCSC{Float64,Int},
+    du::Vector{Float64},
+    uλ::Vector{Float64},
+    cf::SparseContinuationFunction,
 )
     # Get u and λ
     n = length(uλ)

@@ -42,7 +42,7 @@ struct PALC{P, LS, NLS, NTC}
 end
 
 # A Cache for the PALC algorithm
-mutable struct PALCCache
+mutable struct PALCCache{MT <: Union{Matrix{Float64}, SparseMatrixCSC{Float64,Int}}}
     # Algorithm parameters
     θ::Float64
     ds::Float64
@@ -59,7 +59,7 @@ mutable struct PALCCache
     λn::Float64 # Predicted parameter in natural continuation
 
     # PALC Prediction
-    bordered_mat::Matrix{Float64}
+    bordered_mat::MT
     bordered_b::Vector{Float64}
     δuλ0::Vector{Float64} 
     δu0::Vector{Float64}
@@ -72,7 +72,7 @@ mutable struct PALCCache
     uλpred::Vector{Float64}
     δu::Vector{Float64}     # The change in u for the corrent iteration during correction
     Ffun::Vector{Float64}   # Storage for the function residuals (not including hyperplane constraint)
-    Jfun::Matrix{Float64}   # Storage for the function Jacobian (not including hyperplane constraint)
+    Jfun::MT                # Storage for the function Jacobian (not including hyperplane constraint)
 
     # PALC Callback Root-Find
     u_0::Vector{Float64}
@@ -80,7 +80,7 @@ mutable struct PALCCache
     u_t::Vector{Float64}
 end
 
-function PALCCache(p::ContinuationProblem, alg::PALC, ds0)
+function PALCCache(p::ContinuationProblem{F}, alg::PALC, ds0) where {F <: ContinuationFunction}
     # Get initial solution and problem size
     u0 = p.u0
     λ0 = p.λ0
@@ -115,7 +115,52 @@ function PALCCache(p::ContinuationProblem, alg::PALC, ds0)
     u_1     = similar(u0)
     u_t    = similar(u0)
 
-    PALCCache(
+    PALCCache{Matrix{Float64}}(
+        alg.θ, ds0, br, uλ0, u0c, λ0, λ0, bm, bb, 
+        δuλ0, δu0, 0.0, δuλ0_i, uλpred, δu, Ffun, Jfun,
+        u_0, u_1, u_t,
+    )
+end
+function PALCCache(p::ContinuationProblem{F}, alg::PALC, ds0) where {F <: SparseContinuationFunction}
+    # Get Jacobian prototypes
+    Ju_prototype = p.f.Ju_prototype
+    J_prototype = p.f.J_prototype
+
+    # Get initial solution and problem size
+    u0 = p.u0
+    λ0 = p.λ0
+    n  = length(u0)
+
+    # Allocate memory for current iterate
+    u0c         = copy(u0)
+    uλ0         = Vector{Float64}(undef, n + 1)
+    uλ0[1:n]   .= u0c
+    uλ0[n+1]    = λ0
+
+    # Allocate memory for storing curve
+    br      = Vector{Tuple{Vector{Float64}, Float64}}(undef, 0)
+
+    # Allocate memory for prediction
+    δu0     = similar(u0)
+    δuλ0    = Vector{Float64}(undef, n + 1)
+    bm      = vcat(J_prototype, sparse(ones(1,n + 1)))
+    bb      = zeros(n + 1); bb[end] = 1.0
+
+    # Allocate memory for initial tangent (obtained with secant method)
+    δuλ0_i  = similar(δuλ0)
+
+    # Allocate memory for correction
+    δu      = similar(u0)
+    uλpred  = Vector{Float64}(undef, n + 1)
+    Ffun    = similar(u0)
+    Jfun    = copy(J_prototype)
+
+    # Allocate memory for regula-falsi root-find
+    u_0     = similar(u0)
+    u_1     = similar(u0)
+    u_t    = similar(u0)
+
+    PALCCache{SparseMatrixCSC{Float64,Int}}(
         alg.θ, ds0, br, uλ0, u0c, λ0, λ0, bm, bb, 
         δuλ0, δu0, 0.0, δuλ0_i, uλpred, δu, Ffun, Jfun,
         u_0, u_1, u_t,

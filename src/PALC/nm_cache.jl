@@ -84,6 +84,53 @@ function construct_nlp_caches(p::ContinuationProblem, alg::PALC, cache::PALCCach
 
     return n_nlp, palc_nlp
 end
+function construct_nlp_caches(
+    p::ContinuationProblem{F}, alg::PALC, cache::PALCCache, 
+    newton_iter, newton_tol,
+) where {F <: SparseContinuationFunction}
+    # Get sparsity prototypes
+    Ju_prototype = p.f.Ju_prototype
+    J_prototype = p.f.J_prototype
+
+    # Nonlinear problem parameters (define this to avoid needing closures)
+    nlp_params  = (p.f, cache)
+
+    # Initialize caches
+    n_nlp       = init(
+        NonlinearProblem{true}(
+            NonlinearFunction{true, SciMLBase.FullSpecialize}(
+                (du,u,p) -> eval_f!(du,u,p[2].λn,p[1]);
+                jac = (J,u,p) -> eval_Ju!(J,p[2].Ffun,u,p[2].λn,p[1]),
+                jac_prototype = Ju_prototype,
+            ),
+            cache.u0, nlp_params,
+        ),
+        alg.nlsolve;
+        abstol = newton_tol,
+        reltol = newton_tol,
+        maxiters = newton_iter,
+        termination_condition = alg.termcond,
+    )
+    nr,nc       = size(J_prototype)
+    Jp          = vcat(J_prototype, sparse(fill(1.0,1,nc)))
+    palc_nlp    = init(
+        NonlinearProblem{true}(
+            NonlinearFunction{true, SciMLBase.FullSpecialize}(
+                palc_correction_function!; 
+                jac = palc_correction_jacobian!,
+                jac_prototype = Jp,
+            ),
+            cache.uλ0, nlp_params,
+        ),
+        alg.nlsolve;
+        abstol = newton_tol,
+        reltol = newton_tol,
+        maxiters = newton_iter,
+        termination_condition = alg.termcond,
+    )
+
+    return n_nlp, palc_nlp
+end
 
 # ===== Getter methods 
 get_lp_cache(solvers::PALCSolverCache) = solvers.lp

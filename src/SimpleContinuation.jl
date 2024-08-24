@@ -1,6 +1,7 @@
 module SimpleContinuation
 
 using FunctionWrappersWrappers
+using SparseArrays
 using LinearAlgebra
 using FastClosures
 using Printf
@@ -27,7 +28,7 @@ include("PALC/continuation.jl")
 export Silent, ContinuaitonSteps, ContinuationAndNewtonSteps
 export Bordered, Secant
 
-export ContinuationFunction
+export ContinuationFunction, SparseContinuationFunction
 export ContinuationProblem
 
 export TerminateContinuationCallback, AnalysisContinuationCallback

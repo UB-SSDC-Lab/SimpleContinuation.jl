@@ -52,6 +52,42 @@ function set_boardered_matrix!(cache::PALCCache, p::ContinuationProblem)
 
     return nothing
 end
+function set_boardered_matrix!(
+    cache::PALCCache, p::ContinuationProblem{FT},
+) where {FT <: SparseContinuationFunction}
+    # Get parameters
+    fun     = p.f
+    θ       = cache.θ
+    u0      = cache.u0
+    λ0      = cache.λ0
+    uλ0     = cache.uλ0
+    F       = cache.Ffun
+    J       = cache.Jfun
+    A       = cache.bordered_mat
+
+    # Evaluate the function jacobian and set in bm
+    n = length(uλ0) - 1
+    eval_J!(J, F, uλ0, fun)
+
+    rows = rowvals(J)
+    vals = nonzeros(J)
+    nr, nc  = size(J)
+    for j = 1:nc
+        for i in nzrange(J,j)
+            row = rows[i]
+            A[row,j] = vals[i]
+        end
+        A[n+1, j] = cache.δuλ0[j]
+    end
+
+    # Remaining
+    #sf1 = 1.0   #θ / n
+    #sf2 = 1.0   #1.0 - θ
+    #A[n+1, 1:n] .= sf1.*u0
+    #A[n+1, n+1] = sf2*λ0
+
+    return nothing
+end
 
 # Just doing nothing for now in all caes as I'm not really sure if there's any relevant 
 # information to print here (we're already going to print the predicted update to λ
