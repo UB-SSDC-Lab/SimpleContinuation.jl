@@ -11,6 +11,7 @@ using LinearSolve
 using NonlinearSolve
 
 include("type_flags.jl")
+include("norms.jl")
 
 # Problem interface
 include("function.jl")
@@ -34,6 +35,7 @@ export ContinuationProblem
 export TerminateContinuationCallback, AnalysisContinuationCallback
 
 export PALC
+export StandardNorm, ScaledNorm, DoubleScaledNorm, BifurcationKitNorm
 export continuation
 
 end

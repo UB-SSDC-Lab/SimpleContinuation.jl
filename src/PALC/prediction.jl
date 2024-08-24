@@ -2,7 +2,7 @@
 # ===== Bordered Predictor
 function palc_prediction!(cache::PALCCache, alg::PALC{Bordered}, p::ContinuationProblem, solvers, trace)
     # Fill bordered matrix
-    set_boardered_matrix!(cache, p)
+    set_boardered_matrix!(cache, alg, p)
 
     # Update lp cache with new matrix
     set_lp_matrix!(solvers, cache.bordered_mat)
@@ -27,12 +27,9 @@ function scale_predicted_tangent!(x, cache::PALCCache)
     return nothing
 end
 
-function set_boardered_matrix!(cache::PALCCache, p::ContinuationProblem)
+function set_boardered_matrix!(cache::PALCCache, alg::PALC{Bordered}, p::ContinuationProblem)
     # Get parameters
     fun     = p.f
-    θ       = cache.θ
-    u0      = cache.u0
-    λ0      = cache.λ0
     uλ0     = cache.uλ0
     F       = cache.Ffun
     J       = cache.Jfun
@@ -44,11 +41,9 @@ function set_boardered_matrix!(cache::PALCCache, p::ContinuationProblem)
     A[1:n, 1:n+1] .= J
 
     # Remaining
-    sf1 = 1.0   #θ / n
-    sf2 = 1.0   #1.0 - θ
-    #A[n+1, 1:n] .= sf1.*u0
-    #A[n+1, n+1] = sf2*λ0
     A[n+1, :] .= cache.δuλ0
+    #dpnorm_du!(view(A, n+1, 1:n), cache.δu0, cache.δu0, cache.δλ0, cache.δλ0, alg.norm)
+    #A[n+1, n+1] = dpnorm_dλ(cache.δu0, cache.δu0, cache.δλ0, cache.δλ0, alg.norm)
 
     return nothing
 end
@@ -57,9 +52,6 @@ function set_boardered_matrix!(
 ) where {FT <: SparseContinuationFunction}
     # Get parameters
     fun     = p.f
-    θ       = cache.θ
-    u0      = cache.u0
-    λ0      = cache.λ0
     uλ0     = cache.uλ0
     F       = cache.Ffun
     J       = cache.Jfun
@@ -77,14 +69,11 @@ function set_boardered_matrix!(
             row = rows[i]
             A[row,j] = vals[i]
         end
-        A[n+1, j] = cache.δuλ0[j]
+        A[n+1, j] = cache.δuλ0[i]
     end
 
-    # Remaining
-    #sf1 = 1.0   #θ / n
-    #sf2 = 1.0   #1.0 - θ
-    #A[n+1, 1:n] .= sf1.*u0
-    #A[n+1, n+1] = sf2*λ0
+    #dpnorm_du!(view(A, n+1, 1:n), cache.δu0, cache.δu0, cache.δλ0, cache.δλ0, alg.norm)
+    #A[n+1, n+1] = dpnorm_dλ(cache.δu0, cache.δu0, cache.δλ0, cache.δλ0, alg.norm)
 
     return nothing
 end

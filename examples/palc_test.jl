@@ -68,7 +68,7 @@ cont_prob = ContinuationProblem(
 )
 
 cache = continuation(
-    cont_prob, PALC();
+    cont_prob, PALC(; norm=BifurcationKitNorm());
     both_sides      = true,
     ds0             = 0.01,
     dsmin           = 1e-3,

@@ -52,7 +52,7 @@ end
 # ===== Nonlinear Problem Cache Construction
 function construct_nlp_caches(p::ContinuationProblem, alg::PALC, cache::PALCCache, newton_iter, newton_tol)
     # Nonlinear problem parameters (define this to avoid needing closures)
-    nlp_params  = (p.f, cache)
+    nlp_params  = (p.f, cache, alg)
 
     # Initialize caches
     n_nlp       = init(
@@ -93,7 +93,7 @@ function construct_nlp_caches(
     J_prototype = p.f.J_prototype
 
     # Nonlinear problem parameters (define this to avoid needing closures)
-    nlp_params  = (p.f, cache)
+    nlp_params  = (p.f, cache, alg)
 
     # Initialize caches
     n_nlp       = init(

@@ -4,7 +4,6 @@ function palc_correction!(
     dsmin, dsmax, term_callback, analysis_callback, trace,
 )
     # Get cache variables 
-    θ       = cache.θ
     u0      = cache.u0
     λ0      = cache.λ0
     δu0     = cache.δu0
@@ -276,10 +275,10 @@ function palc_correction_function!(F, uλ, p)
     # Get parameters
     fun     = p[1]
     cache   = p[2]
+    alg     = p[3]
     δu      = cache.δu
     δu0     = cache.δu0
     δλ0     = cache.δλ0
-    θ       = cache.θ
     ds      = cache.ds
 
     # Get u and λ
@@ -293,7 +292,8 @@ function palc_correction_function!(F, uλ, p)
     # Evaluate the hyperplane constraint
     δu .= u .- cache.u0
     δλ  = λ  - cache.λ0
-    N   = palc_hyperplane_constraint(δu, δu0, δλ, δλ0, θ, ds)
+    #N   = palc_hyperplane_constraint(δu, δu0, δλ, δλ0, θ, ds)
+    N   = pnorm(δu, δu0, δλ, δλ0, ds, alg.norm)
 
     # Set function and return
     F[1:n] .= cache.Ffun
@@ -305,9 +305,9 @@ function palc_correction_jacobian!(J, uλ, p)
     # Get parameters
     fun     = p[1]
     cache   = p[2]
+    alg     = p[3]
     δu0     = cache.δu0
     δλ0     = cache.δλ0
-    θ       = cache.θ
     n       = length(uλ) - 1
 
     # Evaluate the jacobian and set
@@ -315,7 +315,9 @@ function palc_correction_jacobian!(J, uλ, p)
     J[1:n, :] .= cache.Jfun
 
     # Evaluate the hyperplane constraint jacobian
-    palc_hyperplane_constraint_jacobian!(view(J, n+1, :), δu0, δλ0, θ)
+    #palc_hyperplane_constraint_jacobian!(view(J, n+1, :), δu0, δλ0, θ)
+    dpnorm_du!(view(J, n+1, 1:n), δu0, δu0, δλ0, δλ0, alg.norm)
+    J[n+1, n+1] = dpnorm_dλ(δu0, δu0, δλ0, δλ0, alg.norm)
 
     return nothing
 end

@@ -1687,7 +1687,7 @@ uuid = "73760f76-fbc4-59ce-8f25-708e95d2df96"
 version = "0.4.0"
 
 [[deps.SimpleContinuation]]
-deps = ["FastClosures", "FunctionWrappersWrappers", "LinearAlgebra", "LinearSolve", "NonlinearSolve", "Printf"]
+deps = ["FastClosures", "FunctionWrappersWrappers", "LinearAlgebra", "LinearSolve", "NonlinearSolve", "Printf", "SparseArrays"]
 path = ".."
 uuid = "3a72412b-a309-46b8-80e3-20cae32b9842"
 version = "0.0.1-DEV"

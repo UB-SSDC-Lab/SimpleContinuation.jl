@@ -1,11 +1,11 @@
 # Struct for storing all information for the PALC algorithm
 # (includes algorithm linear and nonlinear solve dependancies)
-struct PALC{P, LS, NLS, NTC}
-    # Continuation parameters
-    θ::Float64
-
+struct PALC{P, N, LS, NLS, NTC}
     # Perturbation scale factor for computing the initial tangent
     ϵλ::Float64
+
+    # PALC normalization
+    norm::N
 
     # Numerical method options
     linsolve::LS
@@ -14,7 +14,7 @@ struct PALC{P, LS, NLS, NTC}
 
     function PALC(; 
         predicter   = Bordered(),
-        θ           = 0.5,
+        norm        = StandardNorm(),
         ϵλ          = 1e-6,
         linesearch  = LiFukushimaLineSearch(), 
         linsolve    = SVDFactorization(), 
@@ -35,8 +35,8 @@ struct PALC{P, LS, NLS, NTC}
         )
 
         # Construct and return PALC
-        new{typeof(predicter), typeof(linsolve), typeof(nls), typeof(termcond)}(
-            θ, ϵλ, linsolve, nls, termcond,
+        new{typeof(predicter), typeof(norm), typeof(linsolve), typeof(nls), typeof(termcond)}(
+            ϵλ, norm, linsolve, nls, termcond,
         )
     end
 end
@@ -44,7 +44,6 @@ end
 # A Cache for the PALC algorithm
 mutable struct PALCCache{MT <: Union{Matrix{Float64}, SparseMatrixCSC{Float64,Int}}}
     # Algorithm parameters
-    θ::Float64
     ds::Float64
 
     # Continuation curve
@@ -116,7 +115,7 @@ function PALCCache(p::ContinuationProblem{F}, alg::PALC, ds0) where {F <: Contin
     u_t    = similar(u0)
 
     PALCCache{Matrix{Float64}}(
-        alg.θ, ds0, br, uλ0, u0c, λ0, λ0, bm, bb, 
+        ds0, br, uλ0, u0c, λ0, λ0, bm, bb, 
         δuλ0, δu0, 0.0, δuλ0_i, uλpred, δu, Ffun, Jfun,
         u_0, u_1, u_t,
     )
@@ -161,7 +160,7 @@ function PALCCache(p::ContinuationProblem{F}, alg::PALC, ds0) where {F <: Sparse
     u_t    = similar(u0)
 
     PALCCache{SparseMatrixCSC{Float64,Int}}(
-        alg.θ, ds0, br, uλ0, u0c, λ0, λ0, bm, bb, 
+        ds0, br, uλ0, u0c, λ0, λ0, bm, bb, 
         δuλ0, δu0, 0.0, δuλ0_i, uλpred, δu, Ffun, Jfun,
         u_0, u_1, u_t,
     )
