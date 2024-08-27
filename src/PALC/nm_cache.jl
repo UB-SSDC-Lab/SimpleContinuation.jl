@@ -157,9 +157,9 @@ function solve_natural_nlp!(solvers::PALCSolverCache, u0, trace)
     # Reinitialize the nonlinear problem
     reinit!(
         solvers.n_nlp, u0; 
-        maxiters = maxiters,
-        abstol = abstol, 
-        reltol = reltol,
+        maxiters    = maxiters,
+        abstol      = abstol, 
+        reltol      = reltol,
     )
 
     # Solve
