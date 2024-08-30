@@ -170,21 +170,25 @@ struct SparseContinuationFunction{FType,JuType,JType} <: AbstractContinuationFun
             fwrap, Juwrap, Jwrap, Ju_prototype, J_prototype,
         )
     end
+    function SparseContinuationFunction(
+        f::Fi, Ju_prototype::SparseMatrixCSC{Float64,Int}, J_prototype::SparseMatrixCSC{Float64,Int},
+    ) where {Fi <: Function}
+        new{typeof(f),Nothing,Nothing}(
+            f, nothing, nothing, Ju_prototype, J_prototype,
+        )
+    end
 end
 
 # Function evaluation methods
 function eval_f!(
-    du::Vector{Float64},
-    u,
-    λ::Float64,
+    du, u, λ,
     cf::AbstractContinuationFunction,
 )
     cf.f(du,u,λ)
     return nothing
 end
 function eval_f!(
-    du::Vector{Float64},
-    uλ::Vector{Float64},
+    du, uλ,
     cf::AbstractContinuationFunction,
 )
     # Get u and λ
@@ -199,10 +203,7 @@ end
 
 # Jacobian wrt u methods
 function eval_Ju!(
-    J::Matrix{Float64},
-    du::Vector{Float64},
-    u,
-    λ::Float64,
+    J, du, u, λ,
     cf::ContinuationFunction{hfj,F,Ju},
 ) where {hfj,F,Ju <: Nothing}
     # Allocate memory for full J (should only be necessary when solving the initial problem, 
@@ -217,19 +218,14 @@ function eval_Ju!(
     J .= view(Jf, :, 1:m)
 end
 function eval_Ju!(
-    J::Matrix{Float64},
-    du::Vector{Float64},
-    u,
-    λ::Float64,
+    J, du, u, λ,
     cf::ContinuationFunction,
 )
     cf.Ju(J,du,u,λ)
     return nothing
 end
 function eval_Ju!(
-    J::Matrix{Float64},
-    du::Vector{Float64},
-    uλ::Vector{Float64},
+    J, du, uλ,
     cf::ContinuationFunction,
 )
     # Get u and λ
@@ -242,19 +238,14 @@ function eval_Ju!(
     return nothing
 end
 function eval_Ju!(
-    J::SparseMatrixCSC{Float64,Int},
-    du::Vector{Float64},
-    u,
-    λ::Float64,
+    J, du, u, λ,
     cf::SparseContinuationFunction,
 )
     cf.Ju(J,du,u,λ)
     return nothing
 end
 function eval_Ju!(
-    J::SparseMatrixCSC{Float64,Int},
-    du::Vector{Float64},
-    uλ::Vector{Float64},
+    J, du, uλ,
     cf::SparseContinuationFunction,
 )
     # Get u and λ
@@ -269,10 +260,7 @@ end
 
 # Jacobian wrt u and λ methods
 function eval_J!(
-    J::Matrix{Float64},
-    du::Vector{Float64},
-    u,
-    λ::Float64,
+    J, du, u, λ,
     cf::ContinuationFunction{hfj},
 ) where {hfj <: Val{false}}
     # Construct views of J
@@ -286,19 +274,14 @@ function eval_J!(
     return nothing
 end
 function eval_J!(
-    J::Matrix{Float64},
-    du::Vector{Float64},
-    u,
-    λ::Float64,
+    J, du, u, λ,
     cf::ContinuationFunction,
 )
     cf.J(J,du,u,λ)
     return nothing
 end
 function eval_J!(
-    J::Matrix{Float64},
-    du::Vector{Float64},
-    uλ::Vector{Float64},
+    J, du, uλ,
     cf::ContinuationFunction,
 )
     # Get u and λ
@@ -310,19 +293,14 @@ function eval_J!(
     return nothing
 end
 function eval_J!(
-    J::SparseMatrixCSC{Float64,Int},
-    du::Vector{Float64},
-    u,
-    λ::Float64,
+    J, du, u, λ,
     cf::SparseContinuationFunction,
 )
     cf.J(J,du,u,λ)
     return nothing
 end
 function eval_J!(
-    J::SparseMatrixCSC{Float64,Int},
-    du::Vector{Float64},
-    uλ::Vector{Float64},
+    J, du, uλ,
     cf::SparseContinuationFunction,
 )
     # Get u and λ

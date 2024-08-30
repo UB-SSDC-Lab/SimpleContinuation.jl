@@ -276,7 +276,7 @@ function palc_correction_function!(F, uλ, p)
     fun     = p[1]
     cache   = p[2]
     alg     = p[3]
-    δu      = cache.δu
+    #δu      = cache.δu
     δu0     = cache.δu0
     δλ0     = cache.δλ0
     ds      = cache.ds
@@ -286,17 +286,20 @@ function palc_correction_function!(F, uλ, p)
     u = view(uλ, 1:n)
     λ = uλ[end]
 
-    # Evaluate the function
-    eval_f!(cache.Ffun, uλ, fun)
-
     # Evaluate the hyperplane constraint
+    # We'll use F to store the differences here so we can 
+    # support ForwardDiff evaluations
+    δu  = view(F, 1:n)
     δu .= u .- cache.u0
     δλ  = λ  - cache.λ0
     #N   = palc_hyperplane_constraint(δu, δu0, δλ, δλ0, θ, ds)
     N   = pnorm(δu, δu0, δλ, δλ0, ds, alg.norm)
 
+    # Evaluate the function
+    eval_f!(view(F,1:n), uλ, fun)
+
     # Set function and return
-    F[1:n] .= cache.Ffun
+    #F[1:n] .= cache.Ffun
     F[end]  = N
     return nothing
 end

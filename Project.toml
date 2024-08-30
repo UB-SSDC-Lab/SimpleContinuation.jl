@@ -5,6 +5,7 @@ version = "0.0.1-DEV"
 
 [deps]
 FastClosures = "9aa1b823-49e4-5ca5-8b0f-3971ec8bab6a"
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 FunctionWrappersWrappers = "77dc65aa-8811-40c2-897b-53d922fa7daf"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 LinearSolve = "7ed4a6bd-45f5-4d41-b270-4a48e9bafcae"

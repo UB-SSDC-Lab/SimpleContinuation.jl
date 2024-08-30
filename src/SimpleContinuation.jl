@@ -10,6 +10,8 @@ using Printf
 using LinearSolve
 using NonlinearSolve
 
+import ForwardDiff
+
 include("type_flags.jl")
 include("norms.jl")
 

@@ -47,6 +47,36 @@ function set_boardered_matrix!(cache::PALCCache, alg::PALC{Bordered}, p::Continu
 
     return nothing
 end
+
+function set_boardered_matrix!(
+    cache::PALCCache, alg::PALC{Bordered}, 
+    p::ContinuationProblem{<:SparseContinuationFunction{FT,JuT,JT}},
+) where {FT, JuT <: Nothing, JT <: Nothing}
+    # Get parameters
+    fun     = p.f
+    uλ0     = cache.uλ0
+    F       = cache.Ffun
+    J       = cache.Jfun
+    A       = cache.bordered_mat
+
+    # Evaluate the function jacobian and set in bm
+    n = length(uλ0) - 1
+    #eval_J!(J, F, uλ0, fun)
+    #A[1:n, 1:n+1] .= J
+    ForwardDiff.jacobian!(
+        view(A, 1:n, 1:n+1), 
+        (du,uλ) -> eval_f!(du, uλ, fun), 
+        F, uλ0
+    )
+
+    # Remaining
+    A[n+1, :] .= cache.δuλ0
+    #dpnorm_du!(view(A, n+1, 1:n), cache.δu0, cache.δu0, cache.δλ0, cache.δλ0, alg.norm)
+    #A[n+1, n+1] = dpnorm_dλ(cache.δu0, cache.δu0, cache.δλ0, cache.δλ0, alg.norm)
+
+    return nothing
+end
+
 function set_boardered_matrix!(
     cache::PALCCache, p::ContinuationProblem{FT},
 ) where {FT <: SparseContinuationFunction}
