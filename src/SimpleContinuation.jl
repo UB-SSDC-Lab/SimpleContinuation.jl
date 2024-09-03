@@ -13,7 +13,7 @@ using NonlinearSolve
 import ForwardDiff
 
 include("type_flags.jl")
-include("norms.jl")
+include("dot_products.jl")
 
 # Problem interface
 include("function.jl")
@@ -37,7 +37,10 @@ export ContinuationProblem
 export TerminateContinuationCallback, AnalysisContinuationCallback
 
 export PALC
-export StandardNorm, ScaledNorm, DoubleScaledNorm, BifurcationKitNorm
+export StandardDotProduct
+export ScaledDotProduct
+export DoubleScaledDotProduct
+export BifurcationKitDotProduct
 export continuation
 
 end

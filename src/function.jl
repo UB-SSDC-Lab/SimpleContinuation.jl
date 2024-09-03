@@ -27,6 +27,8 @@ struct ContinuationFunction{has_full_J,FType,JuType,JλType,JType} <: AbstractCo
         fargtypes = (
             Tuple{VT[1],VT[1],λT},
             Tuple{VT[1],VT[2],λT},
+            Tuple{VT[2],VT[1],λT},
+            Tuple{VT[2],VT[2],λT},
         )
         Juargtypes = (
             Tuple{MT[1],VT[1],VT[1],λT},
@@ -44,7 +46,7 @@ struct ContinuationFunction{has_full_J,FType,JuType,JλType,JType} <: AbstractCo
         )
 
         # Construct function wrappers
-        fwrap   = FunctionWrappersWrapper(f, fargtypes, (Nothing,Nothing,))
+        fwrap   = FunctionWrappersWrapper(f, fargtypes, (Nothing,Nothing,Nothing,Nothing))
         Juwrap  = FunctionWrappersWrapper(Ju, Juargtypes, (Nothing,Nothing,Nothing,Nothing,))
         Jλwrap  = FunctionWrappersWrapper(Jλ, Jλargtypes, (Nothing,Nothing,Nothing,Nothing,Nothing,Nothing,))
 
@@ -73,6 +75,8 @@ struct ContinuationFunction{has_full_J,FType,JuType,JλType,JType} <: AbstractCo
         fargtypes = (
             Tuple{VT[1],VT[1],λT},
             Tuple{VT[1],VT[2],λT},
+            Tuple{VT[2],VT[1],λT},
+            Tuple{VT[2],VT[2],λT},
         )
         Jargtypes = (
             Tuple{MT,VT[1],VT[1],λT},
@@ -80,7 +84,7 @@ struct ContinuationFunction{has_full_J,FType,JuType,JλType,JType} <: AbstractCo
         )
 
         # Construct function wrappers
-        fwrap   = FunctionWrappersWrapper(f, fargtypes, (Nothing,Nothing,))
+        fwrap   = FunctionWrappersWrapper(f, fargtypes, (Nothing,Nothing,Nothing,Nothing))
         Jwrap   = FunctionWrappersWrapper(J, Jargtypes, (Nothing,Nothing,))
 
         new{has_full_J,typeof(fwrap),Nothing,Nothing,typeof(Jwrap)}(
@@ -107,6 +111,8 @@ struct ContinuationFunction{has_full_J,FType,JuType,JλType,JType} <: AbstractCo
         fargtypes = (
             Tuple{VT[1],VT[1],λT},
             Tuple{VT[1],VT[2],λT},
+            Tuple{VT[2],VT[1],λT},
+            Tuple{VT[2],VT[2],λT},
         )
         Juargtypes = (
             Tuple{MT,VT[1],VT[1],λT},
@@ -118,7 +124,7 @@ struct ContinuationFunction{has_full_J,FType,JuType,JλType,JType} <: AbstractCo
         )
 
         # Construct function wrappers
-        fwrap   = FunctionWrappersWrapper(f, fargtypes, (Nothing,Nothing,))
+        fwrap   = FunctionWrappersWrapper(f, fargtypes, (Nothing,Nothing,Nothing,Nothing))
         Juwrap  = FunctionWrappersWrapper(Ju, Juargtypes, (Nothing,Nothing,))
         Jwrap   = FunctionWrappersWrapper(J, Jargtypes, (Nothing,Nothing,))
 
@@ -151,6 +157,8 @@ struct SparseContinuationFunction{FType,JuType,JType} <: AbstractContinuationFun
         fargtypes = (
             Tuple{VT[1],VT[1],λT},
             Tuple{VT[1],VT[2],λT},
+            Tuple{VT[2],VT[1],λT},
+            Tuple{VT[2],VT[2],λT},
         )
         Juargtypes = (
             Tuple{MT,VT[1],VT[1],λT},
@@ -162,7 +170,7 @@ struct SparseContinuationFunction{FType,JuType,JType} <: AbstractContinuationFun
         )
 
         # Construct function wrappers
-        fwrap   = FunctionWrappersWrapper(f, fargtypes, (Nothing,Nothing,))
+        fwrap   = FunctionWrappersWrapper(f, fargtypes, (Nothing,Nothing,Nothing,Nothing))
         Juwrap  = FunctionWrappersWrapper(Ju, Juargtypes, (Nothing,Nothing,))
         Jwrap   = FunctionWrappersWrapper(J, Jargtypes, (Nothing,Nothing,))
 

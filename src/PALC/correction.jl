@@ -11,6 +11,9 @@ function palc_correction!(
     uλpred  = cache.uλpred
     n       = length(δu0)
 
+    # Compute dot product of tangent with itself
+    dotδ = alg.dot(δu0, δλ0)
+
     # Get problem variables
     λmin    = p.λ_bounds[1]
     λmax    = p.λ_bounds[2]
@@ -26,24 +29,33 @@ function palc_correction!(
         # Update attempts
         attempts += 1
 
+        # Compute α for ds  
+        α = cache.ds / dotδ
+
         # Update uλpred (clamping ds to try and stay in λ bounds)
         # If clamped, set hit_bnd to the bound hit and we'll resolve
         # if successful with constant λ
-        uλpred[end]  = λ0  + cache.ds*δλ0
+        #uλpred[end]  = λ0  + cache.ds*δλ0
+        uλpred[end] = λ0 + α*δλ0
         if uλpred[end] < λmin
-            cache.ds    = (λmin - λ0) / δλ0
+            #cache.ds    = (λmin - λ0) / δλ0
+            α           = (λmin - λ0) / δλ0
+            cache.ds    = α*dotδ 
             uλpred[end] = λmin
             hit_bnd     = λmin
             print_correction_trace(cache, trace, 2)
         elseif uλpred[end] > λmax
-            cache.ds    = (λmax - λ0) / δλ0
+            #cache.ds    = (λmax - λ0) / δλ0
+            α           = (λmax - λ0) / δλ0
+            cache.ds    = α*dotδ
             uλpred[end] = λmax
             hit_bnd     = λmax
             print_correction_trace(cache, trace, 2)
         else
             print_correction_trace(cache, trace, 1)
         end
-        uλpred[1:n] .= u0 .+ cache.ds.*δu0
+        #uλpred[1:n] .= u0 .+ cache.ds.*δu0
+        uλpred[1:n] .= u0 .+ α .*δu0
 
         # Solve the palc nonlinear problem
         uλ, retcode = solve_palc_nlp!(solvers, uλpred, trace)
@@ -220,11 +232,12 @@ function palc_target_callback_event!(uλ, cache, solvers, callback, trace)
         usol, retcode = solve_natural_nlp!(solvers, u_t, trace)
 
         success_flag = SciMLBase.successful_retcode(retcode)
+
         if success_flag
             # Call the callback function
             f_2 = call!(callback, usol, λ_2, cache)
 
-            if abs(f_2) <= callback.tol
+            if abs(f_2) <= callback.tol || abs(λ_1 - λ_0) < callback.tol
                 # Set flags
                 done    = true
                 success = true
@@ -249,34 +262,12 @@ function palc_target_callback_event!(uλ, cache, solvers, callback, trace)
     return success
 end
 
-# Hyperplane constraint and jacobian
-function palc_hyperplane_constraint(δu, δu0, δλ, δλ0, θ, ds)
-    n   = length(δu0)
-    sf1 = 1.0 #θ/n
-    sf2 = 1.0 #1-θ
-    N = sf1*dot(δu, δu0) + sf2*δλ*δλ0 - ds
-    return N
-end
-function palc_hyperplane_constraint_jacobian!(J, δu0, δλ0, θ)
-    n = length(δu0)
-    sf1 = 1.0 #θ/n
-    sf2 = 1.0 #1-θ
-    J[1:n] .= sf1.*δu0
-    J[n+1] = sf2*δλ0
-    return nothing
-end
-
 # ===== Nonlinear solve functions
-
-# Here p is a tuple of parameters, where
-#   p[1] = ContinuationFunction
-#   p[2] = PALCCache
 function palc_correction_function!(F, uλ, p)
     # Get parameters
     fun     = p[1]
     cache   = p[2]
     alg     = p[3]
-    #δu      = cache.δu
     δu0     = cache.δu0
     δλ0     = cache.δλ0
     ds      = cache.ds
@@ -292,15 +283,14 @@ function palc_correction_function!(F, uλ, p)
     δu  = view(F, 1:n)
     δu .= u .- cache.u0
     δλ  = λ  - cache.λ0
-    #N   = palc_hyperplane_constraint(δu, δu0, δλ, δλ0, θ, ds)
-    N   = pnorm(δu, δu0, δλ, δλ0, ds, alg.norm)
+    N = palc_norm(δu, δu0, δλ, δλ0, ds, alg.dot)
+
+    # Set the hyperplane constraint
+    F[end]  = N
 
     # Evaluate the function
     eval_f!(view(F,1:n), uλ, fun)
 
-    # Set function and return
-    #F[1:n] .= cache.Ffun
-    F[end]  = N
     return nothing
 end
 
@@ -318,9 +308,8 @@ function palc_correction_jacobian!(J, uλ, p)
     J[1:n, :] .= cache.Jfun
 
     # Evaluate the hyperplane constraint jacobian
-    #palc_hyperplane_constraint_jacobian!(view(J, n+1, :), δu0, δλ0, θ)
-    dpnorm_du!(view(J, n+1, 1:n), δu0, δu0, δλ0, δλ0, alg.norm)
-    J[n+1, n+1] = dpnorm_dλ(δu0, δu0, δλ0, δλ0, alg.norm)
+    palc_norm_dδu!(view(J, n+1, 1:n), δu0, alg.dot)
+    J[n+1, n+1] = palc_norm_dδλ(δλ0, alg.dot)
 
     return nothing
 end

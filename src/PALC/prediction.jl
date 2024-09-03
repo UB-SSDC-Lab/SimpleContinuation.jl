@@ -11,7 +11,7 @@ function palc_prediction!(cache::PALCCache, alg::PALC{Bordered}, p::Continuation
     x = solve_lp!(solvers)
 
     # Set the new tangent, making sure we keep moving in the same direction
-    scale_predicted_tangent!(x, cache)
+    scale_predicted_tangent!(x, cache, alg)
     update_tangent!(cache, x)
 
     # Print trace if desired
@@ -20,10 +20,11 @@ function palc_prediction!(cache::PALCCache, alg::PALC{Bordered}, p::Continuation
     return nothing
 end
 
-function scale_predicted_tangent!(x, cache::PALCCache)
-    α  = 1.0 / norm(x)
-    α *= sign(dot(x, cache.δuλ0))
-    x *= α
+function scale_predicted_tangent!(x, cache::PALCCache, alg::PALC{Bordered})
+    n  = length(x) - 1
+    xn = sqrt(alg.dot(view(x, 1:n), x[n+1]))
+    α  = sign(alg.dot(view(x, 1:n), cache.δu0, x[n+1], cache.δλ0)) / xn
+    x .*= α
     return nothing
 end
 
@@ -41,44 +42,39 @@ function set_boardered_matrix!(cache::PALCCache, alg::PALC{Bordered}, p::Continu
     A[1:n, 1:n+1] .= J
 
     # Remaining
-    A[n+1, :] .= cache.δuλ0
-    #dpnorm_du!(view(A, n+1, 1:n), cache.δu0, cache.δu0, cache.δλ0, cache.δλ0, alg.norm)
-    #A[n+1, n+1] = dpnorm_dλ(cache.δu0, cache.δu0, cache.δλ0, cache.δλ0, alg.norm)
+    ddotdu1!(view(A, n+1, 1:n), cache.δu0, alg.dot)
+    A[n+1, n+1] = ddotdλ1(cache.δλ0, alg.dot)
 
     return nothing
 end
 
 function set_boardered_matrix!(
-    cache::PALCCache, alg::PALC{Bordered}, 
+    cache::PALCCache, 
+    alg::PALC{Bordered}, 
     p::ContinuationProblem{<:SparseContinuationFunction{FT,JuT,JT}},
 ) where {FT, JuT <: Nothing, JT <: Nothing}
     # Get parameters
     fun     = p.f
     uλ0     = cache.uλ0
     F       = cache.Ffun
-    J       = cache.Jfun
     A       = cache.bordered_mat
 
-    # Evaluate the function jacobian and set in bm
-    n = length(uλ0) - 1
-    #eval_J!(J, F, uλ0, fun)
-    #A[1:n, 1:n+1] .= J
-    ForwardDiff.jacobian!(
-        view(A, 1:n, 1:n+1), 
-        (du,uλ) -> eval_f!(du, uλ, fun), 
-        F, uλ0
-    )
+    # Evaluate the function jacobian with ForwardDiff and set in bm
+    n       = length(uλ0) - 1
+    dfun    = @closure (du,uλ) -> eval_f!(du, uλ, fun)
+    ForwardDiff.jacobian!(view(A, 1:n, 1:n+1), dfun, F, uλ0)
 
     # Remaining
-    A[n+1, :] .= cache.δuλ0
-    #dpnorm_du!(view(A, n+1, 1:n), cache.δu0, cache.δu0, cache.δλ0, cache.δλ0, alg.norm)
-    #A[n+1, n+1] = dpnorm_dλ(cache.δu0, cache.δu0, cache.δλ0, cache.δλ0, alg.norm)
+    ddotdu1!(view(A, n+1, 1:n), cache.δu0, alg.dot)
+    A[n+1, n+1] = ddotdλ1(cache.δλ0, alg.dot)
 
     return nothing
 end
 
 function set_boardered_matrix!(
-    cache::PALCCache, p::ContinuationProblem{FT},
+    cache::PALCCache, 
+    alg::PALC{Bordered},
+    p::ContinuationProblem{FT},
 ) where {FT <: SparseContinuationFunction}
     # Get parameters
     fun     = p.f
@@ -99,11 +95,10 @@ function set_boardered_matrix!(
             row = rows[i]
             A[row,j] = vals[i]
         end
-        A[n+1, j] = cache.δuλ0[i]
     end
 
-    #dpnorm_du!(view(A, n+1, 1:n), cache.δu0, cache.δu0, cache.δλ0, cache.δλ0, alg.norm)
-    #A[n+1, n+1] = dpnorm_dλ(cache.δu0, cache.δu0, cache.δλ0, cache.δλ0, alg.norm)
+    ddotdu1!(view(A, n+1, 1:n), cache.δu0, alg.dot)
+    A[n+1, n+1] = ddotdλ1(cache.δλ0, alg.dot)
 
     return nothing
 end
@@ -126,20 +121,27 @@ function palc_prediction!(cache::PALCCache, alg::PALC{Secant}, p::ContinuationPr
         # Just use initial tangent so do nothing here...
         return nothing
     else
+        n = length(cache.δu0)
+
         # Set directions
         cache.δu0 .= cache.br[end][1] .- cache.br[end-1][1]
         cache.δλ0  = cache.br[end][2]  - cache.br[end-1][2]
 
+        # Compute sign of dot product of secant and current tangent
+        sdot = sign(alg.dot(cache.δu0, view(cache.δuλ0, 1:n), cache.δλ0, cache.δuλ0[n+1]))
+
+        # Compute norm of secant
+        nδuλ0 = sqrt(alg.dot(cache.δu0, cache.δλ0))
+
         # Set full direction
-        n = length(cache.δu0)
         cache.δuλ0[1:n] .= cache.δu0
         cache.δuλ0[n+1]  = cache.δλ0
 
         # Scale
-        nδuλ0 = norm(cache.δuλ0)
-        cache.δuλ0 ./= nδuλ0
-        cache.δu0   .= view(cache.δuλ0, 1:n)
-        cache.δλ0    = cache.δuλ0[n+1]
+        α = sdot / nδuλ0
+        cache.δuλ0 .*= α
+        cache.δu0 .= view(cache.δuλ0, 1:n)
+        cache.δλ0 = cache.δuλ0[n+1]
 
         return nothing
     end
