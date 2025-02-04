@@ -18,7 +18,6 @@ struct PALC{P, D <: AbstractDotProduct, LS, NLS, NTC}
         ϵλ          = 1e-6,
         linesearch  = LiFukushimaLineSearch(), 
         linsolve    = SVDFactorization(), 
-        precs       = NonlinearSolve.DEFAULT_PRECS,
         termcond    = AbsSafeBestTerminationMode(),
     )
         if !(predicter isa AbstractPredictor)
@@ -32,7 +31,6 @@ struct PALC{P, D <: AbstractDotProduct, LS, NLS, NTC}
         nls = NewtonRaphson(;
             linsolve    = linsolve,
             linesearch  = linesearch,
-            precs       = precs,
             autodiff    = nothing, # Are functions are currently not differentiable
         )
 
