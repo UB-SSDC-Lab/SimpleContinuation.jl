@@ -18,7 +18,7 @@ struct PALC{P, D <: AbstractDotProduct, LS, NLS, NTC}
         ϵλ          = 1e-6,
         linesearch  = LiFukushimaLineSearch(), 
         linsolve    = SVDFactorization(), 
-        termcond    = AbsSafeBestTerminationMode(),
+        termcond    = NonlinearSolve.AbsNormSafeBestTerminationMode(Base.Fix1(maximum, abs)),
     )
         if !(predicter isa AbstractPredictor)
             error("Predictor type not recognized")
