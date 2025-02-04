@@ -39,7 +39,7 @@ end
 # Form Jacobians
 J_cache = prepare_jacobian(TMvf, zeros(3), AutoForwardDiff(), zeros(4))
 zE0     = zeros(4)
-J       = @closure (J,F,z,E0) -> jacobian!(TMvf, F, J, AutoForwardDiff(), fill_vec!(zE0, z, E0), J_cache)
+J       = @closure (J,F,z,E0) -> jacobian!(TMvf, F, J, J_cache, AutoForwardDiff(), fill_vec!(zE0, z, E0))
 Jz(J,F,z,E0) = jacobian!((y,x) -> TMvf(y,x,E0), F, J, AutoForwardDiff(), z)
 
 # Create termination callback
@@ -68,7 +68,7 @@ cont_prob = ContinuationProblem(
 )
 
 cache = continuation(
-    cont_prob, PALC(; norm=BifurcationKitNorm());
+    cont_prob, PALC(; dot=BifurcationKitDotProduct());
     both_sides      = true,
     ds0             = 0.01,
     dsmin           = 1e-3,
@@ -78,9 +78,9 @@ cache = continuation(
     trace           = ContinuationAndNewtonSteps(),
 )
 
-# fig = Figure()
-# ax = Axis(fig[1,1])
+fig = Figure()
+ax = Axis(fig[1,1])
 
-# λs = map(i -> cache.br[i][2], 1:length(cache.br))
-# Es = map(i -> cache.br[i][1][1], 1:length(cache.br))
-# lines!(ax, λs, Es, color = :blue)
+λs = map(i -> cache.br[i][2], 1:length(cache.br))
+Es = map(i -> cache.br[i][1][1], 1:length(cache.br))
+lines!(ax, λs, Es, color = :blue)

@@ -18,8 +18,7 @@ struct PALC{P, D <: AbstractDotProduct, LS, NLS, NTC}
         ϵλ          = 1e-6,
         linesearch  = LiFukushimaLineSearch(), 
         linsolve    = SVDFactorization(), 
-        precs       = NonlinearSolve.DEFAULT_PRECS,
-        termcond    = AbsSafeBestTerminationMode(),
+        termcond    = NonlinearSolve.AbsNormSafeBestTerminationMode(Base.Fix1(maximum, abs)),
     )
         if !(predicter isa AbstractPredictor)
             error("Predictor type not recognized")
@@ -32,7 +31,6 @@ struct PALC{P, D <: AbstractDotProduct, LS, NLS, NTC}
         nls = NewtonRaphson(;
             linsolve    = linsolve,
             linesearch  = linesearch,
-            precs       = precs,
             autodiff    = nothing, # Are functions are currently not differentiable
         )
 

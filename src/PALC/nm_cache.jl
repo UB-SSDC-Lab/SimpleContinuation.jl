@@ -216,11 +216,11 @@ function solve_natural_nlp!(solvers::PALCSolverCache, u0, trace)
         # Print trace if desired
         print_natural_solve_trace(solvers, trace)
 
-        if !NonlinearSolve.not_terminated(solvers.n_nlp)
+        if !NonlinearSolveBase.not_terminated(solvers.n_nlp)
             break
         end
     end
-    return NonlinearSolve.get_u(solvers.n_nlp), solvers.n_nlp.retcode
+    return NonlinearSolveBase.get_u(solvers.n_nlp), solvers.n_nlp.retcode
 end
 function solve_palc_nlp!(solvers::PALCSolverCache, uλ0, trace)
     # Get parameters that are getting reset when calling reinit!
@@ -238,7 +238,7 @@ function solve_palc_nlp!(solvers::PALCSolverCache, uλ0, trace)
 
     # Check initial residual norm is below specified value
     if solvers.palc_nlp.termination_cache.initial_objective > solvers.palc_max_resid
-        return NonlinearSolve.get_u(solvers.palc_nlp), solvers.palc_nlp.retcode
+        return NonlinearSolveBase.get_u(solvers.palc_nlp), solvers.palc_nlp.retcode
     end
 
     # Solve
@@ -249,11 +249,11 @@ function solve_palc_nlp!(solvers::PALCSolverCache, uλ0, trace)
         # Print trace if desired
         print_palc_solve_trace(solvers, trace)
 
-        if !NonlinearSolve.not_terminated(solvers.palc_nlp)
+        if !NonlinearSolveBase.not_terminated(solvers.palc_nlp)
             break
         end
     end
-    return NonlinearSolve.get_u(solvers.palc_nlp), solvers.palc_nlp.retcode
+    return NonlinearSolveBase.get_u(solvers.palc_nlp), solvers.palc_nlp.retcode
 end
 
 function print_natural_solve_trace(solvers::PALCSolverCache, trace)
