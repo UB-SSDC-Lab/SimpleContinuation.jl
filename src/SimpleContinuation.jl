@@ -10,7 +10,7 @@ using Printf
 using LinearSolve
 using NonlinearSolve
 
-import ForwardDiff
+using ForwardDiff: ForwardDiff
 
 include("type_flags.jl")
 include("dot_products.jl")

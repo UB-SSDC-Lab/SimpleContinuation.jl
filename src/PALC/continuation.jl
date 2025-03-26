@@ -1,50 +1,68 @@
 
 function continuation(
-    p::ContinuationProblem, alg::PALC;
-    both_sides          = false,
-    ds0                 = 1e-2,
-    dsmin               = 1e-6,
-    dsmax               = 1.0,
-    max_cont_steps      = 1000,
-    newton_iter         = 10,
-    newton_tol          = 1e-10,
-    newton_max_resid    = 1.0,
-    term_callback       = nothing, 
-    analysis_callback   = nothing,
-    trace               = Silent(),
+    p::ContinuationProblem,
+    alg::PALC;
+    both_sides=false,
+    ds0=1e-2,
+    dsmin=1e-6,
+    dsmax=1.0,
+    max_cont_steps=1000,
+    newton_iter=10,
+    newton_tol=1e-10,
+    newton_max_resid=1.0,
+    term_callback=nothing,
+    analysis_callback=nothing,
+    trace=Silent(),
 )
     # Construct PALC Cache
     cache = PALCCache(p, alg, ds0)
 
     # Construct numerical method cache
-    solvers = PALCSolverCache(
-        p, alg, cache, 
-        newton_iter, 
-        newton_tol, 
-        newton_max_resid,
-    )
+    solvers = PALCSolverCache(p, alg, cache, newton_iter, newton_tol, newton_max_resid)
 
     # Initialize continuation
     initialize_palc!(cache, alg, p, solvers, trace)
 
     # Continuation loop
-    continuation!(cache, alg, p, solvers, dsmin, dsmax, max_cont_steps, term_callback, analysis_callback, trace)
+    continuation!(
+        cache,
+        alg,
+        p,
+        solvers,
+        dsmin,
+        dsmax,
+        max_cont_steps,
+        term_callback,
+        analysis_callback,
+        trace,
+    )
     if both_sides
         prepare_continuation_in_reverse_direction!(cache, ds0)
-        continuation!(cache, alg, p, solvers, dsmin, dsmax, max_cont_steps, term_callback, analysis_callback, trace)
+        continuation!(
+            cache,
+            alg,
+            p,
+            solvers,
+            dsmin,
+            dsmax,
+            max_cont_steps,
+            term_callback,
+            analysis_callback,
+            trace,
+        )
     end
 
     return cache
 end
 
 function continuation!(
-    cache::PALCCache, 
-    alg::PALC, 
-    p::ContinuationProblem, 
-    solvers::PALCSolverCache, 
-    dsmin, 
-    dsmax, 
-    max_cont_steps, 
+    cache::PALCCache,
+    alg::PALC,
+    p::ContinuationProblem,
+    solvers::PALCSolverCache,
+    dsmin,
+    dsmax,
+    max_cont_steps,
     term_callback,
     analysis_callback,
     trace,
@@ -53,8 +71,8 @@ function continuation!(
     initialize!(term_callback, cache)
 
     # Continuation loop
-    iter    = 0
-    done    = false
+    iter = 0
+    done = false
     success = false
     while !done
         iter += 1
@@ -63,7 +81,9 @@ function continuation!(
         palc_prediction!(cache, alg, p, solvers, trace)
 
         # Perform correction step
-        success, hit_bnd = palc_correction!(cache, alg, p, solvers, dsmin, dsmax, term_callback, analysis_callback, trace)
+        success, hit_bnd = palc_correction!(
+            cache, alg, p, solvers, dsmin, dsmax, term_callback, analysis_callback, trace
+        )
 
         if iter >= max_cont_steps
             done = true
