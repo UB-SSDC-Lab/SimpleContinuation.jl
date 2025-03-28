@@ -17,6 +17,9 @@ function continuation(
     # Construct PALC Cache
     cache = PALCCache(p, alg, ds0)
 
+    # Wrap user provided callback functions
+    handled_term_callback = handle_termination_callback(term_callback, cache, alg, p)
+
     # Construct numerical method cache
     solvers = PALCSolverCache(p, alg, cache, newton_iter, newton_tol, newton_max_resid)
 
@@ -32,7 +35,7 @@ function continuation(
         dsmin,
         dsmax,
         max_cont_steps,
-        term_callback,
+        handled_term_callback,
         analysis_callback,
         trace,
     )
@@ -46,7 +49,7 @@ function continuation(
             dsmin,
             dsmax,
             max_cont_steps,
-            term_callback,
+            handled_term_callback,
             analysis_callback,
             trace,
         )
@@ -68,7 +71,7 @@ function continuation!(
     trace,
 )
     # Initialize the callback
-    initialize!(term_callback, cache)
+    initialize!(term_callback, cache, alg, p)
 
     # Continuation loop
     iter = 0

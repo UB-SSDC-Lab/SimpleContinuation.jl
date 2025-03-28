@@ -27,6 +27,7 @@ include("PALC/prediction.jl")
 include("PALC/correction.jl")
 include("PALC/nm_cache.jl")
 include("PALC/continuation.jl")
+include("PALC/special_callbacks.jl")
 
 export Silent, ContinuaitonSteps, ContinuationAndNewtonSteps
 export Bordered, Secant
@@ -35,6 +36,7 @@ export ContinuationFunction, SparseContinuationFunction
 export ContinuationProblem
 
 export TerminateContinuationCallback, AnalysisContinuationCallback
+export FoldBifurcationTerminationCallback
 
 export PALC
 export StandardDotProduct

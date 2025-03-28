@@ -42,17 +42,15 @@ function palc_correction!(
         # Update uλpred (clamping ds to try and stay in λ bounds)
         # If clamped, set hit_bnd to the bound hit and we'll resolve
         # if successful with constant λ
-        #uλpred[end]  = λ0  + cache.ds*δλ0
+
         uλpred[end] = λ0 + α * δλ0
         if uλpred[end] < λmin
-            #cache.ds    = (λmin - λ0) / δλ0
             α = (λmin - λ0) / δλ0
             cache.ds = α * dotδ
             uλpred[end] = λmin
             hit_bnd = λmin
             print_correction_trace(cache, trace, 2)
         elseif uλpred[end] > λmax
-            #cache.ds    = (λmax - λ0) / δλ0
             α = (λmax - λ0) / δλ0
             cache.ds = α * dotδ
             uλpred[end] = λmax
@@ -61,7 +59,7 @@ function palc_correction!(
         else
             print_correction_trace(cache, trace, 1)
         end
-        #uλpred[1:n] .= u0 .+ cache.ds.*δu0
+
         uλpred[1:n] .= u0 .+ α .* δu0
 
         # Solve the palc nonlinear problem
@@ -69,13 +67,14 @@ function palc_correction!(
 
         # Check if successful
         if SciMLBase.successful_retcode(retcode)
+
             # Check if callback triggered
-            cb_trig = check(term_callback, uλ, cache)
+            cb_trig = check(term_callback, uλ, cache, alg, p)
 
             # If callback triggered, perform regula falsi root finding method and update uλ
             if cb_trig
                 rf_succ = palc_target_callback_event!(
-                    uλ, cache, solvers, term_callback, trace
+                    uλ, cache, alg, p, solvers, term_callback, trace
                 )
                 hit_bnd = NaN # Reset since we're likely not stepping as far and will recheck
             end
@@ -132,7 +131,7 @@ function palc_correction!(
     success && scale_and_clamp_ds!(cache, 1.2, dsmin, dsmax)
 
     # Update the callback if we were successfull
-    success && update!(term_callback, cache)
+    success && update!(term_callback, cache, alg, p)
 
     # Call the analysis callback if we were successful
     success && call!(analysis_callback, cache)
@@ -215,10 +214,10 @@ function palc_target_solution_on_boundary!(cache, λ0, solvers, trace)
 end
 
 # Function to find when callback = 0 with regula falsi method
-function palc_target_callback_event!(uλ, cache, solvers, callback, trace)
+function palc_target_callback_event!(uλ, cache, alg, prob, solvers, callback, trace)
     # Get callback value at boundaries
     f_0 = callback.val_0
-    f_1 = call!(callback, uλ, cache)
+    f_1 = call!(callback, uλ, cache, alg, prob)
 
     # Get parameter values at boundaries
     λ_0 = cache.λ0
@@ -243,10 +242,9 @@ function palc_target_callback_event!(uλ, cache, solvers, callback, trace)
         usol, retcode = solve_natural_nlp!(solvers, u_t, trace)
 
         success_flag = SciMLBase.successful_retcode(retcode)
-
         if success_flag
             # Call the callback function
-            f_2 = call!(callback, usol, λ_2, cache)
+            f_2 = call!(callback, usol, λ_2, cache, alg, prob)
 
             if abs(f_2) <= callback.tol || abs(λ_1 - λ_0) < callback.tol
                 # Set flags
