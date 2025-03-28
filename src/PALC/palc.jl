@@ -1,23 +1,23 @@
 # Struct for storing all information for the PALC algorithm
 # (includes algorithm linear and nonlinear solve dependancies)
-struct PALC{P, D <: AbstractDotProduct, LS, NLS, NTC}
+struct PALC{P, D <: AbstractInnerProduct, LS, NLS, NTC}
     # Perturbation scale factor for computing the initial tangent
     ϵλ::Float64
 
     # PALC normalization
-    dot::D
+    inner_prod::D
 
     # Numerical method options
     linsolve::LS
     nlsolve::NLS
     termcond::NTC
 
-    function PALC(; 
+    function PALC(;
         predicter   = Bordered(),
-        dot         = StandardDotProduct(),
+        inner_prod  = StandardDotProduct(),
         ϵλ          = 1e-6,
-        linesearch  = LiFukushimaLineSearch(), 
-        linsolve    = SVDFactorization(), 
+        linesearch  = LiFukushimaLineSearch(),
+        linsolve    = SVDFactorization(),
         termcond    = NonlinearSolve.AbsNormSafeBestTerminationMode(Base.Fix1(maximum, abs)),
     )
         if !(predicter isa AbstractPredictor)
@@ -35,8 +35,8 @@ struct PALC{P, D <: AbstractDotProduct, LS, NLS, NTC}
         )
 
         # Construct and return PALC
-        new{typeof(predicter), typeof(dot), typeof(linsolve), typeof(nls), typeof(termcond)}(
-            ϵλ, dot, linsolve, nls, termcond,
+        new{typeof(predicter), typeof(inner_prod), typeof(linsolve), typeof(nls), typeof(termcond)}(
+            ϵλ, inner_prod, linsolve, nls, termcond,
         )
     end
 end
@@ -60,7 +60,7 @@ mutable struct PALCCache{MT <: Union{Matrix{Float64}, SparseMatrixCSC{Float64,In
     # PALC Prediction
     bordered_mat::MT
     bordered_b::Vector{Float64}
-    δuλ0::Vector{Float64} 
+    δuλ0::Vector{Float64}
     δu0::Vector{Float64}
     δλ0::Float64
 
@@ -115,7 +115,7 @@ function PALCCache(p::ContinuationProblem{F}, alg::PALC, ds0) where {F <: Contin
     u_t    = similar(u0)
 
     PALCCache{Matrix{Float64}}(
-        ds0, br, uλ0, u0c, λ0, λ0, bm, bb, 
+        ds0, br, uλ0, u0c, λ0, λ0, bm, bb,
         δuλ0, δu0, 0.0, δuλ0_i, uλpred, δu, Ffun, Jfun,
         u_0, u_1, u_t,
     )
@@ -160,13 +160,13 @@ function PALCCache(p::ContinuationProblem{F}, alg::PALC, ds0) where {F <: Sparse
     u_t    = similar(u0)
 
     PALCCache{SparseMatrixCSC{Float64,Int}}(
-        ds0, br, uλ0, u0c, λ0, λ0, bm, bb, 
+        ds0, br, uλ0, u0c, λ0, λ0, bm, bb,
         δuλ0, δu0, 0.0, δuλ0_i, uλpred, δu, Ffun, Jfun,
         u_0, u_1, u_t,
     )
 end
 
-# Set natural continuation parameter as perturbed current parameter λ0 
+# Set natural continuation parameter as perturbed current parameter λ0
 function set_natural_continuation_parameter!(cache::PALCCache, λ)
     cache.λn = λ
     return nothing

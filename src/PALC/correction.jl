@@ -1,9 +1,9 @@
 
 function palc_correction!(
-    cache, alg, p::ContinuationProblem, solvers, 
+    cache, alg, p::ContinuationProblem, solvers,
     dsmin, dsmax, term_callback, analysis_callback, trace,
 )
-    # Get cache variables 
+    # Get cache variables
     u0      = cache.u0
     λ0      = cache.λ0
     δu0     = cache.δu0
@@ -11,8 +11,8 @@ function palc_correction!(
     uλpred  = cache.uλpred
     n       = length(δu0)
 
-    # Compute dot product of tangent with itself
-    dotδ = alg.dot(δu0, δλ0)
+    # Compute inner product of tangent with itself
+    dotδ = alg.inner_prod(δu0, δλ0)
 
     # Get problem variables
     λmin    = p.λ_bounds[1]
@@ -29,7 +29,7 @@ function palc_correction!(
         # Update attempts
         attempts += 1
 
-        # Compute α for ds  
+        # Compute α for ds
         α = cache.ds / dotδ
 
         # Update uλpred (clamping ds to try and stay in λ bounds)
@@ -40,7 +40,7 @@ function palc_correction!(
         if uλpred[end] < λmin
             #cache.ds    = (λmin - λ0) / δλ0
             α           = (λmin - λ0) / δλ0
-            cache.ds    = α*dotδ 
+            cache.ds    = α*dotδ
             uλpred[end] = λmin
             hit_bnd     = λmin
             print_correction_trace(cache, trace, 2)
@@ -68,11 +68,11 @@ function palc_correction!(
             # If callback triggered, perform regula falsi root finding method and update uλ
             if cb_trig
                 rf_succ = palc_target_callback_event!(uλ, cache, solvers, term_callback, trace)
-                hit_bnd = NaN # Reset since we're likely not stepping as far and will recheck 
+                hit_bnd = NaN # Reset since we're likely not stepping as far and will recheck
             end
 
             # Check if we crossed the boundary
-            if uλ[end] < λmin 
+            if uλ[end] < λmin
                 hit_bnd = λmin
             elseif uλ[end] > λmax
                 hit_bnd = λmax
@@ -84,7 +84,7 @@ function palc_correction!(
                 scale_and_clamp_ds!(cache, 0.5, dsmin, dsmax)
             elseif isnan(hit_bnd)
                 # Push solution and set done
-                set_successful_iterate!(cache, uλ) 
+                set_successful_iterate!(cache, uλ)
                 done = true
 
                 # Print trace if desired
@@ -278,12 +278,12 @@ function palc_correction_function!(F, uλ, p)
     λ = uλ[end]
 
     # Evaluate the hyperplane constraint
-    # We'll use F to store the differences here so we can 
+    # We'll use F to store the differences here so we can
     # support ForwardDiff evaluations
     δu  = view(F, 1:n)
     δu .= u .- cache.u0
     δλ  = λ  - cache.λ0
-    N = palc_norm(δu, δu0, δλ, δλ0, ds, alg.dot)
+    N = palc_norm(δu, δu0, δλ, δλ0, ds, alg.inner_prod)
 
     # Set the hyperplane constraint
     F[end]  = N
@@ -308,8 +308,8 @@ function palc_correction_jacobian!(J, uλ, p)
     J[1:n, :] .= cache.Jfun
 
     # Evaluate the hyperplane constraint jacobian
-    palc_norm_dδu!(view(J, n+1, 1:n), δu0, alg.dot)
-    J[n+1, n+1] = palc_norm_dδλ(δλ0, alg.dot)
+    palc_norm_dδu!(view(J, n+1, 1:n), δu0, alg.inner_prod)
+    J[n+1, n+1] = palc_norm_dδλ(δλ0, alg.inner_prod)
 
     return nothing
 end

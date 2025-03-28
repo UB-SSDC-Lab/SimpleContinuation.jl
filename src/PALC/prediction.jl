@@ -22,8 +22,8 @@ end
 
 function scale_predicted_tangent!(x, cache::PALCCache, alg::PALC{Bordered})
     n  = length(x) - 1
-    xn = sqrt(alg.dot(view(x, 1:n), x[n+1]))
-    α  = sign(alg.dot(view(x, 1:n), cache.δu0, x[n+1], cache.δλ0)) / xn
+    xn = sqrt(alg.inner_prod(view(x, 1:n), x[n+1]))
+    α  = sign(alg.inner_prod(view(x, 1:n), cache.δu0, x[n+1], cache.δλ0)) / xn
     x .*= α
     return nothing
 end
@@ -42,15 +42,15 @@ function set_boardered_matrix!(cache::PALCCache, alg::PALC{Bordered}, p::Continu
     A[1:n, 1:n+1] .= J
 
     # Remaining
-    ddotdu1!(view(A, n+1, 1:n), cache.δu0, alg.dot)
-    A[n+1, n+1] = ddotdλ1(cache.δλ0, alg.dot)
+    ddotdu1!(view(A, n+1, 1:n), cache.δu0, alg.inner_prod)
+    A[n+1, n+1] = ddotdλ1(cache.δλ0, alg.inner_prod)
 
     return nothing
 end
 
 function set_boardered_matrix!(
-    cache::PALCCache, 
-    alg::PALC{Bordered}, 
+    cache::PALCCache,
+    alg::PALC{Bordered},
     p::ContinuationProblem{<:SparseContinuationFunction{FT,JuT,JT}},
 ) where {FT, JuT <: Nothing, JT <: Nothing}
     # Get parameters
@@ -65,14 +65,14 @@ function set_boardered_matrix!(
     ForwardDiff.jacobian!(view(A, 1:n, 1:n+1), dfun, F, uλ0)
 
     # Remaining
-    ddotdu1!(view(A, n+1, 1:n), cache.δu0, alg.dot)
-    A[n+1, n+1] = ddotdλ1(cache.δλ0, alg.dot)
+    ddotdu1!(view(A, n+1, 1:n), cache.δu0, alg.inner_prod)
+    A[n+1, n+1] = ddotdλ1(cache.δλ0, alg.inner_prod)
 
     return nothing
 end
 
 function set_boardered_matrix!(
-    cache::PALCCache, 
+    cache::PALCCache,
     alg::PALC{Bordered},
     p::ContinuationProblem{FT},
 ) where {FT <: SparseContinuationFunction}
@@ -97,13 +97,13 @@ function set_boardered_matrix!(
         end
     end
 
-    ddotdu1!(view(A, n+1, 1:n), cache.δu0, alg.dot)
-    A[n+1, n+1] = ddotdλ1(cache.δλ0, alg.dot)
+    ddotdu1!(view(A, n+1, 1:n), cache.δu0, alg.inner_prod)
+    A[n+1, n+1] = ddotdλ1(cache.δλ0, alg.inner_prod)
 
     return nothing
 end
 
-# Just doing nothing for now in all caes as I'm not really sure if there's any relevant 
+# Just doing nothing for now in all caes as I'm not really sure if there's any relevant
 # information to print here (we're already going to print the predicted update to λ
 # in the correction step)
 function print_prediction_trace(cache::PALCCache, trace::Silent)
@@ -128,10 +128,10 @@ function palc_prediction!(cache::PALCCache, alg::PALC{Secant}, p::ContinuationPr
         cache.δλ0  = cache.br[end][2]  - cache.br[end-1][2]
 
         # Compute sign of dot product of secant and current tangent
-        sdot = sign(alg.dot(cache.δu0, view(cache.δuλ0, 1:n), cache.δλ0, cache.δuλ0[n+1]))
+        sdot = sign(alg.inner_prod(cache.δu0, view(cache.δuλ0, 1:n), cache.δλ0, cache.δuλ0[n+1]))
 
         # Compute norm of secant
-        nδuλ0 = sqrt(alg.dot(cache.δu0, cache.δλ0))
+        nδuλ0 = sqrt(alg.inner_prod(cache.δu0, cache.δλ0))
 
         # Set full direction
         cache.δuλ0[1:n] .= cache.δu0
