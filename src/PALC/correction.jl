@@ -1,30 +1,37 @@
 
 function palc_correction!(
-    cache, alg, p::ContinuationProblem, solvers,
-    dsmin, dsmax, term_callback, analysis_callback, trace,
+    cache,
+    alg,
+    p::ContinuationProblem,
+    solvers,
+    dsmin,
+    dsmax,
+    term_callback,
+    analysis_callback,
+    trace,
 )
     # Get cache variables
-    u0      = cache.u0
-    λ0      = cache.λ0
-    δu0     = cache.δu0
-    δλ0     = cache.δλ0
-    uλpred  = cache.uλpred
-    n       = length(δu0)
+    u0 = cache.u0
+    λ0 = cache.λ0
+    δu0 = cache.δu0
+    δλ0 = cache.δλ0
+    uλpred = cache.uλpred
+    n = length(δu0)
 
     # Compute inner product of tangent with itself
     dotδ = alg.inner_prod(δu0, δλ0)
 
     # Get problem variables
-    λmin    = p.λ_bounds[1]
-    λmax    = p.λ_bounds[2]
+    λmin = p.λ_bounds[1]
+    λmax = p.λ_bounds[2]
 
     # Solve nonlinear problem (reducing step-size if necessary)
     attempts = 0
-    success  = true
-    done     = false
-    hit_bnd  = NaN
-    cb_trig  = false
-    rf_succ  = false
+    success = true
+    done = false
+    hit_bnd = NaN
+    cb_trig = false
+    rf_succ = false
     while !done
         # Update attempts
         attempts += 1
@@ -36,26 +43,26 @@ function palc_correction!(
         # If clamped, set hit_bnd to the bound hit and we'll resolve
         # if successful with constant λ
         #uλpred[end]  = λ0  + cache.ds*δλ0
-        uλpred[end] = λ0 + α*δλ0
+        uλpred[end] = λ0 + α * δλ0
         if uλpred[end] < λmin
             #cache.ds    = (λmin - λ0) / δλ0
-            α           = (λmin - λ0) / δλ0
-            cache.ds    = α*dotδ
+            α = (λmin - λ0) / δλ0
+            cache.ds = α * dotδ
             uλpred[end] = λmin
-            hit_bnd     = λmin
+            hit_bnd = λmin
             print_correction_trace(cache, trace, 2)
         elseif uλpred[end] > λmax
             #cache.ds    = (λmax - λ0) / δλ0
-            α           = (λmax - λ0) / δλ0
-            cache.ds    = α*dotδ
+            α = (λmax - λ0) / δλ0
+            cache.ds = α * dotδ
             uλpred[end] = λmax
-            hit_bnd     = λmax
+            hit_bnd = λmax
             print_correction_trace(cache, trace, 2)
         else
             print_correction_trace(cache, trace, 1)
         end
         #uλpred[1:n] .= u0 .+ cache.ds.*δu0
-        uλpred[1:n] .= u0 .+ α .*δu0
+        uλpred[1:n] .= u0 .+ α .* δu0
 
         # Solve the palc nonlinear problem
         uλ, retcode = solve_palc_nlp!(solvers, uλpred, trace)
@@ -67,7 +74,9 @@ function palc_correction!(
 
             # If callback triggered, perform regula falsi root finding method and update uλ
             if cb_trig
-                rf_succ = palc_target_callback_event!(uλ, cache, solvers, term_callback, trace)
+                rf_succ = palc_target_callback_event!(
+                    uλ, cache, solvers, term_callback, trace
+                )
                 hit_bnd = NaN # Reset since we're likely not stepping as far and will recheck
             end
 
@@ -103,13 +112,13 @@ function palc_correction!(
                 if flag
                     done = true
                 else
-                    hit_bnd  = NaN
+                    hit_bnd = NaN
                     scale_and_clamp_ds!(cache, 0.5, dsmin, dsmax)
                 end
             end
         else
             if abs(cache.ds) == dsmin
-                done    = true
+                done = true
                 success = false
             else
                 # Reduce step-size and reattempt
@@ -147,16 +156,16 @@ function print_correction_trace(cache::PALCCache, trace::NonSilentTraceLevel, st
     elseif stage == 3
         # Compute angle between prediction and actual change
         θ = if length(cache.br) > 1
-            δu  = cache.u_0
-            δu .= cache.br[end][1] .- cache.br[end-1][1]
-            δλ  = cache.br[end][2]  - cache.br[end-1][2]
+            δu = cache.u_0
+            δu .= cache.br[end][1] .- cache.br[end - 1][1]
+            δλ = cache.br[end][2] - cache.br[end - 1][2]
             if cache.ds < 0.0
                 δu .*= -1.0
-                δλ   = -δλ
+                δλ = -δλ
             end
-            dp  = dot(δu, cache.δu0) + δλ*cache.δλ0
-            r   = dp / (sqrt(dot(δu,δu) + δλ^2)*norm(cache.δuλ0))
-            θ   = acosd(clamp(r, -1.0, 1.0))
+            dp = dot(δu, cache.δu0) + δλ * cache.δλ0
+            r = dp / (sqrt(dot(δu, δu) + δλ^2) * norm(cache.δuλ0))
+            θ = acosd(clamp(r, -1.0, 1.0))
         else
             NaN
         end
@@ -175,9 +184,9 @@ end
 
 function scale_and_clamp_ds!(cache, scale, dsmin, dsmax)
     sign_ds = sign(cache.ds)
-    abs_ds  = abs(cache.ds)
-    new_ds  = clamp(scale*abs_ds, dsmin, dsmax)
-    cache.ds = sign_ds*new_ds
+    abs_ds = abs(cache.ds)
+    new_ds = clamp(scale * abs_ds, dsmin, dsmax)
+    cache.ds = sign_ds * new_ds
     return nothing
 end
 
@@ -216,17 +225,19 @@ function palc_target_callback_event!(uλ, cache, solvers, callback, trace)
     λ_1 = uλ[end]
 
     # Get inputs at boundaries
-    u_0  = cache.u_0; u_1 = cache.u_1; u_t = cache.u_t
-    n    = length(uλ) - 1
+    u_0 = cache.u_0
+    u_1 = cache.u_1
+    u_t = cache.u_t
+    n = length(uλ) - 1
     u_0 .= cache.u0
     u_1 .= view(uλ, 1:n)
 
     # Begin loop
-    done    = false
+    done = false
     success = false
     while !done
-        λ_2  = λ_0 - f_0*(λ_1 - λ_0) / (f_1 - f_0)
-        u_t .= u_0 .+ ((λ_2 - λ_0) / (λ_1 - λ_0)).*(u_1 .- u_0)
+        λ_2 = λ_0 - f_0 * (λ_1 - λ_0) / (f_1 - f_0)
+        u_t .= u_0 .+ ((λ_2 - λ_0) / (λ_1 - λ_0)) .* (u_1 .- u_0)
 
         set_natural_continuation_parameter!(cache, λ_2)
         usol, retcode = solve_natural_nlp!(solvers, u_t, trace)
@@ -239,20 +250,20 @@ function palc_target_callback_event!(uλ, cache, solvers, callback, trace)
 
             if abs(f_2) <= callback.tol || abs(λ_1 - λ_0) < callback.tol
                 # Set flags
-                done    = true
+                done = true
                 success = true
 
                 # Update iterate
                 uλ[1:n] .= usol
-                uλ[end]  = λ_2
-            elseif f_0*f_2 < 0
+                uλ[end] = λ_2
+            elseif f_0 * f_2 < 0
                 u_1 .= usol
-                λ_1  = λ_2
-                f_1  = f_2
+                λ_1 = λ_2
+                f_1 = f_2
             else
                 u_0 .= usol
-                λ_0  = λ_2
-                f_0  = f_2
+                λ_0 = λ_2
+                f_0 = f_2
             end
         else
             done = true
@@ -265,12 +276,12 @@ end
 # ===== Nonlinear solve functions
 function palc_correction_function!(F, uλ, p)
     # Get parameters
-    fun     = p[1]
-    cache   = p[2]
-    alg     = p[3]
-    δu0     = cache.δu0
-    δλ0     = cache.δλ0
-    ds      = cache.ds
+    fun = p[1]
+    cache = p[2]
+    alg = p[3]
+    δu0 = cache.δu0
+    δλ0 = cache.δλ0
+    ds = cache.ds
 
     # Get u and λ
     n = length(uλ) - 1
@@ -280,36 +291,36 @@ function palc_correction_function!(F, uλ, p)
     # Evaluate the hyperplane constraint
     # We'll use F to store the differences here so we can
     # support ForwardDiff evaluations
-    δu  = view(F, 1:n)
+    δu = view(F, 1:n)
     δu .= u .- cache.u0
-    δλ  = λ  - cache.λ0
+    δλ = λ - cache.λ0
     N = palc_norm(δu, δu0, δλ, δλ0, ds, alg.inner_prod)
 
     # Set the hyperplane constraint
-    F[end]  = N
+    F[end] = N
 
     # Evaluate the function
-    eval_f!(view(F,1:n), uλ, fun)
+    eval_f!(view(F, 1:n), uλ, fun)
 
     return nothing
 end
 
 function palc_correction_jacobian!(J, uλ, p)
     # Get parameters
-    fun     = p[1]
-    cache   = p[2]
-    alg     = p[3]
-    δu0     = cache.δu0
-    δλ0     = cache.δλ0
-    n       = length(uλ) - 1
+    fun = p[1]
+    cache = p[2]
+    alg = p[3]
+    δu0 = cache.δu0
+    δλ0 = cache.δλ0
+    n = length(uλ) - 1
 
     # Evaluate the jacobian and set
     eval_J!(cache.Jfun, cache.Ffun, uλ, fun)
     J[1:n, :] .= cache.Jfun
 
     # Evaluate the hyperplane constraint jacobian
-    palc_norm_dδu!(view(J, n+1, 1:n), δu0, alg.inner_prod)
-    J[n+1, n+1] = palc_norm_dδλ(δλ0, alg.inner_prod)
+    palc_norm_dδu!(view(J, n + 1, 1:n), δu0, alg.inner_prod)
+    J[n + 1, n + 1] = palc_norm_dδλ(δλ0, alg.inner_prod)
 
     return nothing
 end

@@ -14,11 +14,11 @@ mutable struct TerminateContinuationCallback{FType} <: RootSolveContinuationCall
     tol::Float64
 
     # Constructer
-    function TerminateContinuationCallback(f::F; tol = 1e-12) where {F <: Function}
+    function TerminateContinuationCallback(f::F; tol=1e-12) where {F<:Function}
         fwrap = FunctionWrappersWrapper(
-            f, (Tuple{Vector{Float64}, Float64, PALCCache},), (Float64,),
+            f, (Tuple{Vector{Float64},Float64,PALCCache},), (Float64,)
         )
-        new{typeof(fwrap)}(fwrap, NaN, tol)
+        return new{typeof(fwrap)}(fwrap, NaN, tol)
     end
 end
 
@@ -48,9 +48,9 @@ struct AnalysisContinuationCallback{FType} <: AbstractContinuationCallback
     f::FType # Takes the continuation cache as single argument and returns Float64
 
     # Constructer
-    function AnalysisContinuationCallback(f::F) where {F <: Function}
+    function AnalysisContinuationCallback(f::F) where {F<:Function}
         fwrap = FunctionWrappersWrapper(f, (Tuple{PALCCache},), (Nothing,))
-        new{typeof(fwrap)}(fwrap)
+        return new{typeof(fwrap)}(fwrap)
     end
 end
 
@@ -73,7 +73,7 @@ check(cb::Nothing, uλ0, cache::PALCCache) = false
 function check(cb::RootSolveContinuationCallback, uλ0, cache::PALCCache)
     # Evaluate callback function
     val_1 = call!(cb, uλ0, cache)
-    return val_1*cb.val_0 < 0
+    return val_1 * cb.val_0 < 0
 end
 
 # Call the callback callback
@@ -84,7 +84,8 @@ function call!(cb::AnalysisContinuationCallback, cache::PALCCache)
 end
 function call!(cb::RootSolveContinuationCallback, uλ0, cache::PALCCache)
     n = length(uλ0) - 1
-    u = cache.u_t; u .= view(uλ0, 1:n)
+    u = cache.u_t
+    u .= view(uλ0, 1:n)
     return cb.f(u, uλ0[end], cache)
 end
 function call!(cb::RootSolveContinuationCallback, u0, λ0, cache::PALCCache)

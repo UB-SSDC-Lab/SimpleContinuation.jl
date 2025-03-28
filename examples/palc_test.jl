@@ -9,10 +9,10 @@ using GLMakie
 
 using BenchmarkTools
 
-import ForwardDiff
+using ForwardDiff: ForwardDiff
 
 function TMvf(F, z, E0)
-    par_tm = (α = 1.5, τ = 0.013, J = 3.07, E0 = -2.0, τD = 0.200, U0 = 0.3, τF = 1.5, τS = 0.007)
+    par_tm = (α=1.5, τ=0.013, J=3.07, E0=-2.0, τD=0.200, U0=0.3, τF=1.5, τS=0.007)
     @unpack J, α, τ, τD, τF, U0 = par_tm
     E, x, u = z
     SS0 = J * u * x * E + E0
@@ -23,39 +23,41 @@ function TMvf(F, z, E0)
     return nothing
 end
 function TMvf(du, zE0)
-    n   = length(zE0) - 1
-    z   = view(zE0, 1:n)
-    E0  = zE0[end]
-    TMvf(du, z, E0)
+    n = length(zE0) - 1
+    z = view(zE0, 1:n)
+    E0 = zE0[end]
+    return TMvf(du, z, E0)
 end
 
 # Utility function
 function fill_vec!(zE0, z, E0)
     zE0[1:3] .= z
-    zE0[4]    = E0
+    zE0[4] = E0
     return zE0
 end
 
 # Form Jacobians
 J_cache = prepare_jacobian(TMvf, zeros(3), AutoForwardDiff(), zeros(4))
-zE0     = zeros(4)
-J       = @closure (J,F,z,E0) -> jacobian!(TMvf, F, J, J_cache, AutoForwardDiff(), fill_vec!(zE0, z, E0))
-Jz(J,F,z,E0) = jacobian!((y,x) -> TMvf(y,x,E0), F, J, AutoForwardDiff(), z)
+zE0 = zeros(4)
+J = @closure (J, F, z, E0) ->
+    jacobian!(TMvf, F, J, J_cache, AutoForwardDiff(), fill_vec!(zE0, z, E0))
+Jz(J, F, z, E0) = jacobian!((y, x) -> TMvf(y, x, E0), F, J, AutoForwardDiff(), z)
 
 # Create termination callback
-cb_term_fun(u,λ) = λ + 3
+cb_term_fun(u, λ) = λ + 3
 cb_term = TerminateContinuationCallback(cb_term_fun)
 
 # Create analysis callback
-fig = Figure(); ax = Axis(fig[1,1])
+fig = Figure();
+ax = Axis(fig[1, 1]);
 pts = Observable(Vector{Point2f}(undef, 0))
 lines!(ax, pts)
 display(fig)
-an_fun(cache) = begin
+function an_fun(cache)
     pts[] = map(i -> Point2f(cache.br[i][2], cache.br[i][1][1]), 1:length(cache.br))
     Makie.reset_limits!(ax)
     sleep(0.1)
-    nothing
+    return nothing
 end
 an_cb = AnalysisContinuationCallback(an_fun)
 
@@ -68,19 +70,20 @@ cont_prob = ContinuationProblem(
 )
 
 cache = continuation(
-    cont_prob, PALC(; inner_prod=BifurcationKitInnerProduct());
-    both_sides      = true,
-    ds0             = 0.01,
-    dsmin           = 1e-3,
-    dsmax           = 0.1,
+    cont_prob,
+    PALC(; inner_prod=BifurcationKitInnerProduct());
+    both_sides=true,
+    ds0=0.01,
+    dsmin=1e-3,
+    dsmax=0.1,
     #term_callback   = cb_term,
     #analysis_callback = an_cb,
-    trace           = ContinuationAndNewtonSteps(),
+    trace=ContinuationAndNewtonSteps(),
 )
 
 fig = Figure()
-ax = Axis(fig[1,1])
+ax = Axis(fig[1, 1])
 
 λs = map(i -> cache.br[i][2], 1:length(cache.br))
 Es = map(i -> cache.br[i][1][1], 1:length(cache.br))
-lines!(ax, λs, Es, color = :blue)
+lines!(ax, λs, Es; color=:blue)

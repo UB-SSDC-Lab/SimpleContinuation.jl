@@ -1,5 +1,7 @@
 
-function initialize_palc!(cache::PALCCache, alg::PALC, p::ContinuationProblem, solvers, trace::AbstractTraceLevel)
+function initialize_palc!(
+    cache::PALCCache, alg::PALC, p::ContinuationProblem, solvers, trace::AbstractTraceLevel
+)
     # Get incormation from the problem
     u0 = p.u0
     λ0 = p.λ0
@@ -37,20 +39,22 @@ function initialize_palc!(cache::PALCCache, alg::PALC, p::ContinuationProblem, s
     # Get the solution
     if SciMLBase.successful_retcode(retcode)
         # Compute and set the initial tangent
-        n           = length(u0)
-        u0          = cache.u0              # The current solution (from first solve)
-        δuλ0        = cache.δuλ0            # The predicted tangent direction
+        n = length(u0)
+        u0 = cache.u0              # The current solution (from first solve)
+        δuλ0 = cache.δuλ0            # The predicted tangent direction
 
-        δuλ0[1:n]  .= usol .- cache.u0      # Setting secant direction
-        δuλ0[end]   = λpert
+        δuλ0[1:n] .= usol .- cache.u0      # Setting secant direction
+        δuλ0[end] = λpert
 
-        ninv        = 1.0 / norm(δuλ0)      # Scale secant direciton to unit vector
-        δuλ0      .*= ninv
+        ninv = 1.0 / norm(δuλ0)      # Scale secant direciton to unit vector
+        δuλ0 .*= ninv
 
         update_tangent!(cache, δuλ0)        # Update the tangent direction in cache
         cache.δuλ0_initial .= δuλ0          # Save initial tangent
     else
-        error("Solve to compute initial tangent failed! Consider reducing perturbation size.")
+        error(
+            "Solve to compute initial tangent failed! Consider reducing perturbation size."
+        )
     end
     return nothing
 end
@@ -58,7 +62,9 @@ end
 function print_initializaiton_trace(cache::PALCCache, trace::Silent, stage::Int)
     return nothing
 end
-function print_initializaiton_trace(cache::PALCCache, trace::NonSilentTraceLevel, stage::Int)
+function print_initializaiton_trace(
+    cache::PALCCache, trace::NonSilentTraceLevel, stage::Int
+)
     if stage == 1
         println("Initializing PALC Algorithm:")
         println("  Solving with provided guess: λ = $(cache.λn)")

@@ -1,6 +1,6 @@
 # Struct for storing all information for the PALC algorithm
 # (includes algorithm linear and nonlinear solve dependancies)
-struct PALC{P, D <: AbstractInnerProduct, LS, NLS, NTC}
+struct PALC{P,D<:AbstractInnerProduct,LS,NLS,NTC}
     # Perturbation scale factor for computing the initial tangent
     ϵλ::Float64
 
@@ -13,12 +13,12 @@ struct PALC{P, D <: AbstractInnerProduct, LS, NLS, NTC}
     termcond::NTC
 
     function PALC(;
-        predicter   = Bordered(),
-        inner_prod  = StandardDotProduct(),
-        ϵλ          = 1e-6,
-        linesearch  = LiFukushimaLineSearch(),
-        linsolve    = SVDFactorization(),
-        termcond    = NonlinearSolve.AbsNormSafeBestTerminationMode(Base.Fix1(maximum, abs)),
+        predicter=Bordered(),
+        inner_prod=StandardDotProduct(),
+        ϵλ=1e-6,
+        linesearch=LiFukushimaLineSearch(),
+        linsolve=SVDFactorization(),
+        termcond=NonlinearSolve.AbsNormSafeBestTerminationMode(Base.Fix1(maximum, abs)),
     )
         if !(predicter isa AbstractPredictor)
             error("Predictor type not recognized")
@@ -29,25 +29,31 @@ struct PALC{P, D <: AbstractInnerProduct, LS, NLS, NTC}
 
         # Form newton solver
         nls = NewtonRaphson(;
-            linsolve    = linsolve,
-            linesearch  = linesearch,
-            autodiff    = nothing, # Are functions are currently not differentiable
+            linsolve=linsolve,
+            linesearch=linesearch,
+            autodiff=nothing, # Are functions are currently not differentiable
         )
 
         # Construct and return PALC
-        new{typeof(predicter), typeof(inner_prod), typeof(linsolve), typeof(nls), typeof(termcond)}(
-            ϵλ, inner_prod, linsolve, nls, termcond,
+        return new{
+            typeof(predicter),
+            typeof(inner_prod),
+            typeof(linsolve),
+            typeof(nls),
+            typeof(termcond),
+        }(
+            ϵλ, inner_prod, linsolve, nls, termcond
         )
     end
 end
 
 # A Cache for the PALC algorithm
-mutable struct PALCCache{MT <: Union{Matrix{Float64}, SparseMatrixCSC{Float64,Int}}}
+mutable struct PALCCache{MT<:Union{Matrix{Float64},SparseMatrixCSC{Float64,Int}}}
     # Algorithm parameters
     ds::Float64
 
     # Continuation curve
-    br::Vector{Tuple{Vector{Float64}, Float64}}
+    br::Vector{Tuple{Vector{Float64},Float64}}
 
     # Current iterate
     uλ0::Vector{Float64}
@@ -79,48 +85,69 @@ mutable struct PALCCache{MT <: Union{Matrix{Float64}, SparseMatrixCSC{Float64,In
     u_t::Vector{Float64}
 end
 
-function PALCCache(p::ContinuationProblem{F}, alg::PALC, ds0) where {F <: ContinuationFunction}
+function PALCCache(
+    p::ContinuationProblem{F}, alg::PALC, ds0
+) where {F<:ContinuationFunction}
     # Get initial solution and problem size
     u0 = p.u0
     λ0 = p.λ0
-    n  = length(u0)
+    n = length(u0)
 
     # Allocate memory for current iterate
-    u0c         = copy(u0)
-    uλ0         = Vector{Float64}(undef, n + 1)
-    uλ0[1:n]   .= u0c
-    uλ0[n+1]    = λ0
+    u0c = copy(u0)
+    uλ0 = Vector{Float64}(undef, n + 1)
+    uλ0[1:n] .= u0c
+    uλ0[n + 1] = λ0
 
     # Allocate memory for storing curve
-    br      = Vector{Tuple{Vector{Float64}, Float64}}(undef, 0)
+    br = Vector{Tuple{Vector{Float64},Float64}}(undef, 0)
 
     # Allocate memory for prediction
-    δu0     = similar(u0)
-    δuλ0    = Vector{Float64}(undef, n + 1)
-    bm      = Matrix{Float64}(undef, n + 1, n + 1)
-    bb      = zeros(n + 1); bb[end] = 1.0
+    δu0 = similar(u0)
+    δuλ0 = Vector{Float64}(undef, n + 1)
+    bm = Matrix{Float64}(undef, n + 1, n + 1)
+    bb = zeros(n + 1)
+    bb[end] = 1.0
 
     # Allocate memory for initial tangent (obtained with secant method)
-    δuλ0_i  = similar(δuλ0)
+    δuλ0_i = similar(δuλ0)
 
     # Allocate memory for correction
-    δu      = similar(u0)
-    uλpred  = Vector{Float64}(undef, n + 1)
-    Ffun    = similar(u0)
-    Jfun    = Matrix{Float64}(undef, n, n + 1)
+    δu = similar(u0)
+    uλpred = Vector{Float64}(undef, n + 1)
+    Ffun = similar(u0)
+    Jfun = Matrix{Float64}(undef, n, n + 1)
 
     # Allocate memory for regula-falsi root-find
-    u_0     = similar(u0)
-    u_1     = similar(u0)
-    u_t    = similar(u0)
+    u_0 = similar(u0)
+    u_1 = similar(u0)
+    u_t = similar(u0)
 
-    PALCCache{Matrix{Float64}}(
-        ds0, br, uλ0, u0c, λ0, λ0, bm, bb,
-        δuλ0, δu0, 0.0, δuλ0_i, uλpred, δu, Ffun, Jfun,
-        u_0, u_1, u_t,
+    return PALCCache{Matrix{Float64}}(
+        ds0,
+        br,
+        uλ0,
+        u0c,
+        λ0,
+        λ0,
+        bm,
+        bb,
+        δuλ0,
+        δu0,
+        0.0,
+        δuλ0_i,
+        uλpred,
+        δu,
+        Ffun,
+        Jfun,
+        u_0,
+        u_1,
+        u_t,
     )
 end
-function PALCCache(p::ContinuationProblem{F}, alg::PALC, ds0) where {F <: SparseContinuationFunction}
+function PALCCache(
+    p::ContinuationProblem{F}, alg::PALC, ds0
+) where {F<:SparseContinuationFunction}
     # Get Jacobian prototypes
     Ju_prototype = p.f.Ju_prototype
     J_prototype = p.f.J_prototype
@@ -128,41 +155,58 @@ function PALCCache(p::ContinuationProblem{F}, alg::PALC, ds0) where {F <: Sparse
     # Get initial solution and problem size
     u0 = p.u0
     λ0 = p.λ0
-    n  = length(u0)
+    n = length(u0)
 
     # Allocate memory for current iterate
-    u0c         = copy(u0)
-    uλ0         = Vector{Float64}(undef, n + 1)
-    uλ0[1:n]   .= u0c
-    uλ0[n+1]    = λ0
+    u0c = copy(u0)
+    uλ0 = Vector{Float64}(undef, n + 1)
+    uλ0[1:n] .= u0c
+    uλ0[n + 1] = λ0
 
     # Allocate memory for storing curve
-    br      = Vector{Tuple{Vector{Float64}, Float64}}(undef, 0)
+    br = Vector{Tuple{Vector{Float64},Float64}}(undef, 0)
 
     # Allocate memory for prediction
-    δu0     = similar(u0)
-    δuλ0    = Vector{Float64}(undef, n + 1)
-    bm      = vcat(J_prototype, sparse(ones(1,n + 1)))
-    bb      = zeros(n + 1); bb[end] = 1.0
+    δu0 = similar(u0)
+    δuλ0 = Vector{Float64}(undef, n + 1)
+    bm = vcat(J_prototype, sparse(ones(1, n + 1)))
+    bb = zeros(n + 1)
+    bb[end] = 1.0
 
     # Allocate memory for initial tangent (obtained with secant method)
-    δuλ0_i  = similar(δuλ0)
+    δuλ0_i = similar(δuλ0)
 
     # Allocate memory for correction
-    δu      = similar(u0)
-    uλpred  = Vector{Float64}(undef, n + 1)
-    Ffun    = similar(u0)
-    Jfun    = copy(J_prototype)
+    δu = similar(u0)
+    uλpred = Vector{Float64}(undef, n + 1)
+    Ffun = similar(u0)
+    Jfun = copy(J_prototype)
 
     # Allocate memory for regula-falsi root-find
-    u_0     = similar(u0)
-    u_1     = similar(u0)
-    u_t    = similar(u0)
+    u_0 = similar(u0)
+    u_1 = similar(u0)
+    u_t = similar(u0)
 
-    PALCCache{SparseMatrixCSC{Float64,Int}}(
-        ds0, br, uλ0, u0c, λ0, λ0, bm, bb,
-        δuλ0, δu0, 0.0, δuλ0_i, uλpred, δu, Ffun, Jfun,
-        u_0, u_1, u_t,
+    return PALCCache{SparseMatrixCSC{Float64,Int}}(
+        ds0,
+        br,
+        uλ0,
+        u0c,
+        λ0,
+        λ0,
+        bm,
+        bb,
+        δuλ0,
+        δu0,
+        0.0,
+        δuλ0_i,
+        uλpred,
+        δu,
+        Ffun,
+        Jfun,
+        u_0,
+        u_1,
+        u_t,
     )
 end
 
@@ -176,14 +220,16 @@ function perturb_natural_continuation_parameter!(cache::PALCCache, δλ)
     return nothing
 end
 
-function set_successful_iterate!(cache::PALCCache, u::Vector{Float64}, λ::Float64, push_point::Bool=true)
+function set_successful_iterate!(
+    cache::PALCCache, u::Vector{Float64}, λ::Float64, push_point::Bool=true
+)
     # Set the current iterate
     cache.u0 .= u
     cache.λ0 = λ
 
     n = length(u)
     cache.uλ0[1:n] .= u
-    cache.uλ0[end]  = λ
+    cache.uλ0[end] = λ
 
     # Push to continuation curve
     if push_point
@@ -191,7 +237,9 @@ function set_successful_iterate!(cache::PALCCache, u::Vector{Float64}, λ::Float
     end
     return nothing
 end
-function set_successful_iterate!(cache::PALCCache, uλ::Vector{Float64}, push_point::Bool=true)
+function set_successful_iterate!(
+    cache::PALCCache, uλ::Vector{Float64}, push_point::Bool=true
+)
     # Set the current iterate
     n = length(uλ) - 1
     cache.u0 .= view(uλ, 1:n)
