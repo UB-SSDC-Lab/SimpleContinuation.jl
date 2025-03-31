@@ -33,7 +33,10 @@ function fold_detection_callback_function(u, λ, cache, alg, prob)
     end
 
     # Scale the predicted tangent
-    scale_predicted_tangent!(x, cache, alg)
+    #scale_predicted_tangent!(x, cache, alg)
+    xn = sqrt(alg.inner_prod(view(x, 1:n), x[n + 1]))
+    α = sign(alg.inner_prod(view(x, 1:n), cache.δu0, x[n + 1], cache.δλ0)) / xn
+    x .*= α
     return x[end]
 end
 
