@@ -6,6 +6,7 @@ function continuation(
     ds0=1e-2,
     dsmin=1e-6,
     dsmax=1.0,
+    initial_tangent=SecantInitialTangent(),
     max_cont_steps=1000,
     newton_iter=10,
     newton_tol=1e-10,
@@ -24,7 +25,7 @@ function continuation(
     solvers = PALCSolverCache(p, alg, cache, newton_iter, newton_tol, newton_max_resid)
 
     # Initialize continuation
-    initialize_palc!(cache, alg, p, solvers, trace)
+    initialize_palc!(initial_tangent, cache, alg, p, solvers, trace)
 
     # Continuation loop
     continuation!(

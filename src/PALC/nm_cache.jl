@@ -36,13 +36,13 @@ struct PALCSolverCache{LP,NNLP,PNLP}
 end
 
 # ===== Linear Problem Cache Construction
-function construct_lp_cache(alg::PALC{<:Bordered}, cache::PALCCache)
+function construct_lp_cache(alg::PALC, cache::PALCCache)
     return init(LinearProblem(cache.bordered_mat, cache.bordered_b), alg.linsolve)
     return nothing
 end
-function construct_lp_cache(alg::PALC, cache::PALCCache)
-    return nothing
-end
+#function construct_lp_cache(alg::PALC, cache::PALCCache)
+#    return nothing
+#end
 
 # ===== Nonlinear Problem Cache Construction
 function construct_nlp_caches(

@@ -72,7 +72,10 @@ cont_prob = ContinuationProblem(
 cache = continuation(
     cont_prob,
     PALC(; inner_prod=BifurcationKitInnerProduct());
-    term_callback   = FoldBifurcationTerminationCallback(),
+    #initial_tangent=BorderedInitialTangent([4,1,2,3]),
+    #initial_tangent=SecantInitialTangent(),
+    initial_tangent=UserInitialTangent([0.0,0.0,0.0,1.0]),
+    #term_callback   = FoldBifurcationTerminationCallback(),
     #term_callback = cb_term,
     analysis_callback = an_cb,
     #trace=ContinuationAndNewtonSteps(),

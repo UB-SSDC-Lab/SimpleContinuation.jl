@@ -29,7 +29,7 @@ include("PALC/nm_cache.jl")
 include("PALC/continuation.jl")
 include("PALC/special_callbacks.jl")
 
-export Silent, ContinuaitonSteps, ContinuationAndNewtonSteps
+export Silent, ContinuationSteps, ContinuationAndNewtonSteps
 export Bordered, Secant
 
 export ContinuationFunction, SparseContinuationFunction
@@ -43,6 +43,7 @@ export StandardDotProduct
 export ScaledInnerProduct
 export DoubleScaledInnerProduct
 export BifurcationKitInnerProduct
+export SecantInitialTangent, BorderedInitialTangent, UserInitialTangent
 export continuation
 
 end

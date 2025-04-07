@@ -1,9 +1,6 @@
 # Struct for storing all information for the PALC algorithm
 # (includes algorithm linear and nonlinear solve dependancies)
 struct PALC{P,D<:AbstractInnerProduct,LS,NLS,NTC}
-    # Perturbation scale factor for computing the initial tangent
-    ϵλ::Float64
-
     # PALC normalization
     inner_prod::D
 
@@ -15,7 +12,6 @@ struct PALC{P,D<:AbstractInnerProduct,LS,NLS,NTC}
     function PALC(;
         predicter=Bordered(),
         inner_prod=StandardDotProduct(),
-        ϵλ=1e-6,
         linesearch=LiFukushimaLineSearch(),
         linsolve=SVDFactorization(),
         termcond=NonlinearSolve.AbsTerminationMode(),
@@ -42,7 +38,7 @@ struct PALC{P,D<:AbstractInnerProduct,LS,NLS,NTC}
             typeof(nls),
             typeof(termcond),
         }(
-            ϵλ, inner_prod, linsolve, nls, termcond
+            inner_prod, linsolve, nls, termcond
         )
     end
 end
