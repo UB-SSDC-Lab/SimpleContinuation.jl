@@ -4,7 +4,7 @@ function palc_prediction!(
     cache::PALCCache, alg::PALC{Bordered}, p::ContinuationProblem, solvers, trace
 )
     # Fill bordered matrix
-    set_boardered_matrix!(cache, alg, p)
+    set_bordered_matrix!(cache, alg, p)
 
     # Update lp cache with new matrix
     set_lp_matrix!(solvers, cache.bordered_mat)
@@ -30,7 +30,7 @@ function scale_predicted_tangent!(x, cache::PALCCache, alg::PALC{Bordered})
     return nothing
 end
 
-function set_boardered_matrix!(
+function set_bordered_matrix!(
     cache::PALCCache, alg::PALC{Bordered}, p::ContinuationProblem
 )
     # Get parameters
@@ -52,7 +52,7 @@ function set_boardered_matrix!(
     return nothing
 end
 
-function set_boardered_matrix!(
+function set_bordered_matrix!(
     cache::PALCCache,
     alg::PALC{Bordered},
     p::ContinuationProblem{<:SparseContinuationFunction{FT,JuT,JT}},
@@ -75,7 +75,7 @@ function set_boardered_matrix!(
     return nothing
 end
 
-function set_boardered_matrix!(
+function set_bordered_matrix!(
     cache::PALCCache, alg::PALC{Bordered}, p::ContinuationProblem{FT}
 ) where {FT<:SparseContinuationFunction}
     # Get parameters
@@ -112,7 +112,7 @@ function print_prediction_trace(cache::PALCCache, trace::Silent)
     return nothing
 end
 function print_prediction_trace(cache::PALCCache, trace::NonSilentTraceLevel)
-    println("Computed boardered prediction.")
+    println("Computed bordered prediction.")
     return nothing
 end
 

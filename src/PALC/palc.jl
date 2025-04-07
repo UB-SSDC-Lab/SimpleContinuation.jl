@@ -1,9 +1,6 @@
 # Struct for storing all information for the PALC algorithm
 # (includes algorithm linear and nonlinear solve dependancies)
 struct PALC{P,D<:AbstractInnerProduct,LS,NLS,NTC}
-    # Perturbation scale factor for computing the initial tangent
-    ϵλ::Float64
-
     # PALC normalization
     inner_prod::D
 
@@ -15,10 +12,9 @@ struct PALC{P,D<:AbstractInnerProduct,LS,NLS,NTC}
     function PALC(;
         predicter=Bordered(),
         inner_prod=StandardDotProduct(),
-        ϵλ=1e-6,
         linesearch=LiFukushimaLineSearch(),
         linsolve=SVDFactorization(),
-        termcond=NonlinearSolve.AbsNormSafeBestTerminationMode(Base.Fix1(maximum, abs)),
+        termcond=NonlinearSolve.AbsTerminationMode(),
     )
         if !(predicter isa AbstractPredictor)
             error("Predictor type not recognized")
@@ -31,7 +27,7 @@ struct PALC{P,D<:AbstractInnerProduct,LS,NLS,NTC}
         nls = NewtonRaphson(;
             linsolve=linsolve,
             linesearch=linesearch,
-            autodiff=nothing, # Are functions are currently not differentiable
+            autodiff=nothing, # Our functions are currently not differentiable
         )
 
         # Construct and return PALC
@@ -42,7 +38,7 @@ struct PALC{P,D<:AbstractInnerProduct,LS,NLS,NTC}
             typeof(nls),
             typeof(termcond),
         }(
-            ϵλ, inner_prod, linsolve, nls, termcond
+            inner_prod, linsolve, nls, termcond
         )
     end
 end

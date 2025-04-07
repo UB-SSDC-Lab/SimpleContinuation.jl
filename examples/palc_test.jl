@@ -44,7 +44,7 @@ J = @closure (J, F, z, E0) ->
 Jz(J, F, z, E0) = jacobian!((y, x) -> TMvf(y, x, E0), F, J, AutoForwardDiff(), z)
 
 # Create termination callback
-cb_term_fun(u, λ) = λ + 3
+cb_term_fun(u, λ) = λ + 1
 cb_term = TerminateContinuationCallback(cb_term_fun)
 
 # Create analysis callback
@@ -72,13 +72,14 @@ cont_prob = ContinuationProblem(
 cache = continuation(
     cont_prob,
     PALC(; inner_prod=BifurcationKitInnerProduct());
-    both_sides=true,
-    ds0=0.01,
-    dsmin=1e-3,
-    dsmax=0.1,
-    #term_callback   = cb_term,
-    #analysis_callback = an_cb,
-    trace=ContinuationAndNewtonSteps(),
+    #initial_tangent=BorderedInitialTangent([4,1,2,3]),
+    #initial_tangent=SecantInitialTangent(),
+    initial_tangent=UserInitialTangent([0.0,0.0,0.0,1.0]),
+    #term_callback   = FoldBifurcationTerminationCallback(),
+    #term_callback = cb_term,
+    analysis_callback = an_cb,
+    #trace=ContinuationAndNewtonSteps(),
+    dsmax = 0.01,
 )
 
 fig = Figure()
