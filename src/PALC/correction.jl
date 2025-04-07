@@ -213,8 +213,8 @@ function palc_target_solution_on_boundary!(cache, λ0, solvers, trace)
     return success_flag
 end
 
-# Function to find when callback = 0 with regula falsi method
-function palc_target_callback_event!(uλ, cache, alg, prob, solvers, callback, trace)
+# Function to find when callback = 0 with regula falsi method and natural continuation
+function nc_target_callback_event!(uλ, cache, alg, prob, solvers, callback, trace)
     # Get callback value at boundaries
     f_0 = callback.val_0
     f_1 = call!(callback, uλ, cache, alg, prob)
@@ -252,8 +252,8 @@ function palc_target_callback_event!(uλ, cache, alg, prob, solvers, callback, t
                 success = true
 
                 # Update iterate
-                uλ[1:n] .= usol
-                uλ[end] = λ_2
+                uλ[1:n] .= u_0
+                uλ[end] = λ_0
             elseif f_0 * f_2 < 0
                 u_1 .= usol
                 λ_1 = λ_2
@@ -267,6 +267,77 @@ function palc_target_callback_event!(uλ, cache, alg, prob, solvers, callback, t
             done = true
         end
     end
+
+    return success
+end
+
+# Function to find when callback = 0 with regula falsi method and PALC
+function palc_target_callback_event!(uλ, cache, alg, prob, solvers, callback, trace)
+    # Get callback value at boundaries
+    f_0 = callback.val_0
+    f_1 = call!(callback, uλ, cache, alg, prob)
+
+    # Get delta-arclength values at boundaries
+    dotδ = alg.inner_prod(cache.δu0, cache.δλ0)
+    start_ds = cache.ds
+    ds_0 = 0.0
+    ds_1 = start_ds
+
+    # Get inputs at boundaries
+    u_0 = cache.u_0
+    u_1 = cache.u_1
+    u_t = cache.u_t
+    n = length(uλ) - 1
+
+    u_0 .= cache.u0
+    λ_0 = cache.λ0
+    u_1 .= view(uλ, 1:n)
+    λ_1 = uλ[end]
+
+    # Begin loop
+    done = false
+    success = false
+    while !done
+        ds_t = ds_0 - f_0 * (ds_1 - ds_0) / (f_1 - f_0)
+        α_t = ds_t / dotδ
+        u_t .= cache.u0 .+ α_t .* cache.δu0
+        λ_t = cache.λ0 + α_t * cache.δλ0
+
+        cache.ds = ds_t
+        cache.uλpred[1:n] .= u_t
+        cache.uλpred[end] = λ_t
+        uλ_t, retcode = solve_palc_nlp!(solvers, cache.uλpred, trace)
+
+        success_flag = SciMLBase.successful_retcode(retcode)
+        if success_flag
+            # Call the callback function
+            f_t = call!(callback, uλ_t, cache, alg, prob)
+
+            if abs(ds_1 - ds_0) < callback.tol
+                # Set flags
+                done = true
+                success = true
+
+                # Update iterate
+                uλ .= uλ_t
+            elseif f_0 * f_t < 0
+                ds_1 = ds_t
+                u_1 .= view(uλ_t, 1:n)
+                λ_1 = uλ_t[end]
+                f_1 = f_t
+            else
+                ds_0 = ds_t
+                u_0 .= view(uλ_t, 1:n)
+                λ_0 = uλ_t[end]
+                f_0 = f_t
+            end
+        else
+            done = true
+        end
+    end
+
+    # Reset ds to original value
+    cache.ds = start_ds
 
     return success
 end
