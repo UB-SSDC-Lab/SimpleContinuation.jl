@@ -30,9 +30,7 @@ function scale_predicted_tangent!(x, cache::PALCCache, alg::PALC{Bordered})
     return nothing
 end
 
-function set_bordered_matrix!(
-    cache::PALCCache, alg::PALC{Bordered}, p::ContinuationProblem
-)
+function set_bordered_matrix!(cache::PALCCache, alg::PALC{Bordered}, p::ContinuationProblem)
     # Get parameters
     fun = p.f
     uλ0 = cache.uλ0

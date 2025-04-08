@@ -70,7 +70,7 @@ function construct_nlp_caches(
     palc_nlp = init(
         NonlinearProblem{true}(
             NonlinearFunction{true,SciMLBase.FullSpecialize}(
-                palc_correction_function!; jac=palc_correction_jacobian!
+                palc_correction_function!; jac=(palc_correction_jacobian!)
             ),
             cache.uλ0,
             nlp_params,
@@ -120,7 +120,7 @@ function construct_nlp_caches(
     palc_nlp = init(
         NonlinearProblem{true}(
             NonlinearFunction{true,SciMLBase.FullSpecialize}(
-                palc_correction_function!; jac=palc_correction_jacobian!, jac_prototype=Jp
+                palc_correction_function!; jac=(palc_correction_jacobian!), jac_prototype=Jp
             ),
             cache.uλ0,
             nlp_params,
@@ -234,7 +234,8 @@ function solve_palc_nlp!(solvers::PALCSolverCache, uλ0, trace)
 
     # Check initial residual norm is below max allowed residual
     if any(@closure(x->abs(x)>solvers.palc_max_resid), solvers.palc_nlp.fu)
-        return NonlinearSolveBase.get_u(solvers.palc_nlp), SciMLBase.ReturnCode.InitialFailure
+        return NonlinearSolveBase.get_u(solvers.palc_nlp),
+        SciMLBase.ReturnCode.InitialFailure
     end
 
     # Solve

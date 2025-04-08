@@ -17,9 +17,7 @@ mutable struct TerminateContinuationCallback{FType} <: UserRootSolveContinuation
 
     # Constructor
     function TerminateContinuationCallback(f::F; tol=1e-12) where {F<:Function}
-        fwrap = FunctionWrappersWrapper(
-            f, (Tuple{Vector{Float64},Float64},), (Float64,)
-        )
+        fwrap = FunctionWrappersWrapper(f, (Tuple{Vector{Float64},Float64},), (Float64,))
         return new{typeof(fwrap)}(fwrap, NaN, tol)
     end
 end
@@ -30,7 +28,8 @@ end
 # expose to users.
 #
 # This is what is actual employed internally with a FoldBifurcationTerminationCallback
-mutable struct InternalTerminateContinuationCallback{FType} <: InternalRootSolveContinuationCallback
+mutable struct InternalTerminateContinuationCallback{FType} <:
+               InternalRootSolveContinuationCallback
     # The callback function
     f::FType # Takes the current iterate as arguments and returns Float64
 
@@ -42,14 +41,12 @@ mutable struct InternalTerminateContinuationCallback{FType} <: InternalRootSolve
 
     # Constructer
     function InternalTerminateContinuationCallback(
-        f::F, cache, alg, prob;
-        tol=1e-12
+        f::F, cache, alg, prob; tol=1e-12
     ) where {F<:Function}
-
         fwrap = FunctionWrappersWrapper(
             f,
             (Tuple{Vector{Float64},Float64,typeof(cache),typeof(alg),typeof(prob)},),
-            (Float64,)
+            (Float64,),
         )
 
         return new{typeof(fwrap)}(fwrap, NaN, tol)
@@ -125,7 +122,9 @@ function call!(cb::InternalRootSolveContinuationCallback, uλ0, cache::PALCCache
     u .= view(uλ0, 1:n)
     return cb.f(u, uλ0[end], cache, alg, prob)
 end
-function call!(cb::InternalRootSolveContinuationCallback, u0, λ0, cache::PALCCache, alg, prob)
+function call!(
+    cb::InternalRootSolveContinuationCallback, u0, λ0, cache::PALCCache, alg, prob
+)
     return cb.f(u0, λ0, cache, alg, prob)
 end
 
