@@ -2,13 +2,14 @@
 # This callback terminates the continuation process when a fold bifurcation is detected.
 struct FoldBifurcationTerminationCallback <: RootSolveContinuationCallback
     tol::Float64
-    function FoldBifurcationTerminationCallback(;tol=1e-12)
-        return new(tol)
+    use_det::Bool
+    function FoldBifurcationTerminationCallback(; tol=1e-12, use_det=true)
+        return new(tol, use_det)
     end
 end
 
-# Utility function for handling the detection of fold bifurcations
-function fold_detection_callback_function(u, λ, cache, alg, prob)
+# Utility functions for handling the detection of fold bifurcations
+function bordered_fold_detection_callback_function(u, λ, cache, alg, prob)
     # Fold detection test is based on the bordered prediction strategy. We want to
     # terminate at a point where δλ = 0.0.
 
@@ -39,10 +40,21 @@ function fold_detection_callback_function(u, λ, cache, alg, prob)
     x .*= α
     return x[end]
 end
+function determinant_fold_detection_callback_function(u, λ, cache, alg, prob)
+    n = length(u)
+    eval_J!(cache.Jfun, cache.Ffun, u, λ, prob.f)
+    return det(view(cache.Jfun, 1:n, 1:n))
+end
 
 # Handle fold bifurcation termination callback
 function handle_termination_callback(cb::FoldBifurcationTerminationCallback, cache, alg, p)
-    return InternalTerminateContinuationCallback(
-        fold_detection_callback_function, cache, alg, p; tol=cb.tol
-    )
+    if cb.use_det
+        return InternalTerminateContinuationCallback(
+            determinant_fold_detection_callback_function, cache, alg, p; tol=cb.tol
+        )
+    else
+        return InternalTerminateContinuationCallback(
+            bordered_fold_detection_callback_function, cache, alg, p; tol=cb.tol
+        )
+    end
 end

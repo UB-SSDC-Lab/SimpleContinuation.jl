@@ -238,18 +238,22 @@ function solve_palc_nlp!(solvers::PALCSolverCache, uλ0, trace)
     end
 
     # Solve
-    for i in 1:(solvers.nlp_iters)
-        # Take newton step
-        step!(solvers.palc_nlp)
+    if all(@closure(x->abs(x)<solvers.nlp_tol), solvers.palc_nlp.fu)
+        return NonlinearSolveBase.get_u(solvers.palc_nlp), SciMLBase.ReturnCode.Success
+    else
+        for i in 1:(solvers.nlp_iters)
+            # Take newton step
+            step!(solvers.palc_nlp)
 
-        # Print trace if desired
-        print_palc_solve_trace(solvers, trace)
+            # Print trace if desired
+            print_palc_solve_trace(solvers, trace)
 
-        if !NonlinearSolveBase.not_terminated(solvers.palc_nlp)
-            break
+            if !NonlinearSolveBase.not_terminated(solvers.palc_nlp)
+                break
+            end
         end
+        return NonlinearSolveBase.get_u(solvers.palc_nlp), solvers.palc_nlp.retcode
     end
-    return NonlinearSolveBase.get_u(solvers.palc_nlp), solvers.palc_nlp.retcode
 end
 
 function print_natural_solve_trace(solvers::PALCSolverCache, trace)

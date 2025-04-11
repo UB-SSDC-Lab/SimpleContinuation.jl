@@ -186,25 +186,35 @@ function initialize_palc!(
     u0 = p.u0
     λ0 = p.λ0
 
-    # Make sure our current iterate is the initial guess provided by user
-    # NOTE: We pass the final argument of false so that this initial point is not
-    # added to the points on the zero-curve
-    set_successful_iterate!(cache, u0, λ0, false)
+    # Check if we need to correct the user provided guess
+    F = cache.Ffun
+    eval_f!(F, u0, λ0, p.f)
+    need_correction = any(@closure(x->abs(x)>solvers.nlp_tol), F)
 
-    # Set natural continuation parameter
-    set_natural_continuation_parameter!(cache, λ0)
+    if need_correction
+        # Make sure our current iterate is the initial guess provided by user
+        # NOTE: We pass the final argument of false so that this initial point is not
+        # added to the points on the zero-curve
+        set_successful_iterate!(cache, u0, λ0, false)
 
-    # Print trace if desired
-    print_initialization_trace(cache, trace, 1)
+        # Set natural continuation parameter
+        set_natural_continuation_parameter!(cache, λ0)
 
-    # Solve initial problem with user provided guess
-    u_sol, retcode = solve_natural_nlp!(solvers, u0, trace)
+        # Print trace if desired
+        print_initialization_trace(cache, trace, 1)
 
-    # Update current iterate if solve successful, otherwise error
-    if SciMLBase.successful_retcode(retcode)
-        set_successful_iterate!(cache, u_sol, λ0, true)
+        # Solve initial problem with user provided guess
+        u_sol, retcode = solve_natural_nlp!(solvers, u0, trace)
+
+        # Update current iterate if solve successful, otherwise error
+        if SciMLBase.successful_retcode(retcode)
+            set_successful_iterate!(cache, u_sol, λ0, true)
+        else
+            error("Initial solve failed with user provided guess!")
+        end
     else
-        error("Initial solve failed with user provided guess!")
+        # Set the current iterate to the user provided guess
+        set_successful_iterate!(cache, u0, λ0, true)
     end
 
     # Compute the initial tangent
