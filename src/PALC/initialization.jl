@@ -4,7 +4,7 @@ abstract type AbstractInitialTangent end
 # Constructs initial tangent using the secant method with a single natural continuation step
 struct SecantInitialTangent <: AbstractInitialTangent
     step_scale_factor::Float64
-    function SecantInitialTangent(;step_scale_factor = 1e-6)
+    function SecantInitialTangent(; step_scale_factor=1e-6)
         new(step_scale_factor)
     end
 end
@@ -13,10 +13,10 @@ end
 struct BorderedInitialTangent{I} <: AbstractInitialTangent
     positive_search_order::Bool
     search_order::I
-    function BorderedInitialTangent(;positive_search_order = true)
+    function BorderedInitialTangent(; positive_search_order=true)
         new{Nothing}(positive_search_order, nothing)
     end
-    function BorderedInitialTangent(search_order::I) where {I <: AbstractVector}
+    function BorderedInitialTangent(search_order::I) where {I<:AbstractVector}
         if !(eltype(search_order) <: Integer)
             throw(ArgumentError("The search order must be an integer vector!"))
         end
@@ -24,7 +24,7 @@ struct BorderedInitialTangent{I} <: AbstractInitialTangent
     end
 end
 function get_search_order(bit::BorderedInitialTangent{Nothing}, n)
-    return bit.positive_search_order ? (1:n+1) : (n+1:-1:1)
+    return bit.positive_search_order ? (1:(n + 1)) : ((n + 1):-1:1)
 end
 function get_search_order(bit::BorderedInitialTangent, n)
     return bit.search_order
@@ -45,7 +45,7 @@ function compute_initial_tangent(
     alg::PALC,
     prob::ContinuationProblem,
     solvers,
-    trace::AbstractTraceLevel
+    trace::AbstractTraceLevel,
 )
     # Perturb the natural continuation parameter to construct initial tangent
     λ_pert = method.step_scale_factor * cache.ds
@@ -88,15 +88,13 @@ function compute_initial_tangent(
     alg::PALC,
     prob::ContinuationProblem,
     solvers,
-    trace::AbstractTraceLevel
+    trace::AbstractTraceLevel,
 )
     # Get user tangent
     n = length(cache.u0)
     initial_tangent = method.initial_tangent
     if length(initial_tangent) != length(cache.u0) + 1
-        error(
-            "The provided initial tangent must be of length $(n + 1)!"
-        )
+        error("The provided initial tangent must be of length $(n + 1)!")
     end
 
     # Scale user tangent
@@ -115,7 +113,7 @@ function compute_initial_tangent(
     alg::PALC,
     prob::ContinuationProblem,
     solvers,
-    trace::AbstractTraceLevel
+    trace::AbstractTraceLevel,
 )
     n = length(cache.u0)
     uλpred = cache.uλpred
@@ -130,7 +128,7 @@ function compute_initial_tangent(
     if maximum(iterates) > n + 1
         error(
             "The user provided base direction search order contains an integer that is " *
-            "greater than n + 1!"
+            "greater than n + 1!",
         )
     end
 
@@ -156,7 +154,7 @@ function compute_initial_tangent(
 
             # Scale the new tangent
             xn = sqrt(alg.inner_prod(view(x, 1:n), x[n + 1]))
-            α  = x[end] < 0 ? -1.0 / xn : 1.0 / xn
+            α = x[end] < 0 ? -1.0 / xn : 1.0 / xn
             x .*= α
 
             # Update the tangent direction
@@ -180,7 +178,7 @@ function initialize_palc!(
     alg::PALC,
     p::ContinuationProblem,
     solvers,
-    trace::AbstractTraceLevel
+    trace::AbstractTraceLevel,
 )
     # Get information from the problem
     u0 = p.u0

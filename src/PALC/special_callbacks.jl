@@ -2,7 +2,7 @@
 # This callback terminates the continuation process when a fold bifurcation is detected.
 struct FoldBifurcationTerminationCallback <: RootSolveContinuationCallback
     tol::Float64
-    function FoldBifurcationTerminationCallback(;tol=1e-12)
+    function FoldBifurcationTerminationCallback(; tol=1e-12)
         return new(tol)
     end
 end
