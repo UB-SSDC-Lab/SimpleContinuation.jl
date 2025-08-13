@@ -5,3 +5,5 @@
 [![Build Status](https://github.com/UB-SSDC-Lab/SimpleContinuation.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/UB-SSDC-Lab/SimpleContinuation.jl/actions/workflows/CI.yml?query=branch%3Amain)
 [![Coverage](https://codecov.io/gh/UB-SSDC-Lab/SimpleContinuation.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/UB-SSDC-Lab/SimpleContinuation.jl)
 [![Code Style: Blue](https://img.shields.io/badge/code%20style-blue-4495d1.svg)](https://github.com/invenia/BlueStyle)
+
+An implementation of the natural and pseudo-arclength continuation methods developed with efficiency in mind and with support for a wide range of linear and nonlinear solver routines through the use of [LinearSolve.jl](https://github.com/SciML/LinearSolve.jl) and [NonlinearSolve.jl](https://github.com/SciML/NonlinearSolve.jl). 
