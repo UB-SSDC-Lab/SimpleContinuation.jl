@@ -207,7 +207,14 @@ function solve_natural_nlp!(solvers::PALCSolverCache, u0, trace)
     maxiters = solvers.n_nlp.maxiters
 
     # Reinitialize the nonlinear problem
-    reinit!(solvers.n_nlp, u0; maxiters=maxiters, abstol=abstol, reltol=reltol, p=solvers.n_nlp.p)
+    reinit!(
+        solvers.n_nlp,
+        u0;
+        maxiters=maxiters,
+        abstol=abstol,
+        reltol=reltol,
+        p=solvers.n_nlp.p,
+    )
 
     # Solve
     for i in 1:(solvers.nlp_iters)
@@ -230,7 +237,14 @@ function solve_palc_nlp!(solvers::PALCSolverCache, uλ0, trace)
     maxiters = solvers.palc_nlp.maxiters
 
     # Reinitialize the nonlinear problem
-    reinit!(solvers.palc_nlp, uλ0; maxiters=maxiters, abstol=abstol, reltol=reltol, p=solvers.palc_nlp.p)
+    reinit!(
+        solvers.palc_nlp,
+        uλ0;
+        maxiters=maxiters,
+        abstol=abstol,
+        reltol=reltol,
+        p=solvers.palc_nlp.p,
+    )
 
     # Check initial residual norm is below max allowed residual
     if any(@closure(x->abs(x)>solvers.palc_max_resid), solvers.palc_nlp.fu)
