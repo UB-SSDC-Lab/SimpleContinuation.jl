@@ -85,16 +85,19 @@ function continuation!(
         palc_prediction!(cache, alg, p, solvers, trace)
 
         # Perform correction step
-        success, hit_bnd = palc_correction!(
+        success, terminate_continuation = palc_correction!(
             cache, alg, p, solvers, dsmin, dsmax, term_callback, analysis_callback, trace
         )
 
         if iter >= max_cont_steps
             done = true
-        elseif !success
+            cache.ret = :Maxiters
+        elseif !success # If correction step failed, end the process
             done = true
-        elseif success && hit_bnd
+            # cache ret should be set within correction to determine failure condition (currently this is limited to min stepsize)
+        elseif success && terminate_continuation # termination is due to callback or hitting bound, consider successful
             done = true
+            # cache ret should be set within correction to determine termination condition
         end
     end
     return nothing

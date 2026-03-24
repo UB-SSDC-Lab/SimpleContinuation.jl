@@ -115,10 +115,11 @@ function palc_correction!(
                     scale_and_clamp_ds!(cache, 0.5, dsmin, dsmax)
                 end
             end
-        else
+        else # solve is not successful
             if abs(cache.ds) == dsmin
                 done = true
                 success = false
+                cache.ret = :MinimumStepSize # update ret with 'done' condition. This won't be overwritten since success=false (see continuation.jl) 
             else
                 # Reduce step-size and reattempt
                 scale_and_clamp_ds!(cache, 0.5, dsmin, dsmax)
@@ -137,7 +138,11 @@ function palc_correction!(
     success && call!(analysis_callback, cache)
 
     # Handle termination flag
-    terminate_continuation = !isnan(hit_bnd) || cb_trig
+    terminate_continuation = !isnan(hit_bnd) || cb_trig # hit bound or triggered callback
+
+    if terminate_continuation
+        set_successful_retcode!(cache, hit_bnd, cb_trig)
+    end
 
     return success, terminate_continuation
 end
@@ -392,4 +397,12 @@ function palc_correction_jacobian!(J, uλ, p)
     J[n + 1, n + 1] = palc_norm_dδλ(δλ0, alg.inner_prod)
 
     return nothing
+end
+
+function set_successful_retcode!(cache, hit_bnd, cb_trig)
+    if isnan(hit_bnd) && cb_trig
+        cache.ret = :CallbackTermination
+    elseif !cb_trig
+        cache.ret = :HitBound
+    end
 end
