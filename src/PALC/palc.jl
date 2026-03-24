@@ -79,6 +79,9 @@ mutable struct PALCCache{MT<:Union{Matrix{Float64},SparseMatrixCSC{Float64,Int}}
     u_0::Vector{Float64}
     u_1::Vector{Float64}
     u_t::Vector{Float64}
+
+    # Return code
+    ret::Symbol # could also do a custom type for pretty viewing like sciml but symbols should work just fine
 end
 
 function PALCCache(
@@ -118,7 +121,7 @@ function PALCCache(
     u_0 = similar(u0)
     u_1 = similar(u0)
     u_t = similar(u0)
-
+    ret = :None # init return code (should always be overwritten)
     return PALCCache{Matrix{Float64}}(
         ds0,
         br,
@@ -139,6 +142,7 @@ function PALCCache(
         u_0,
         u_1,
         u_t,
+        ret
     )
 end
 function PALCCache(
@@ -183,6 +187,8 @@ function PALCCache(
     u_1 = similar(u0)
     u_t = similar(u0)
 
+    ret = :None # init return code
+
     return PALCCache{SparseMatrixCSC{Float64,Int}}(
         ds0,
         br,
@@ -203,6 +209,7 @@ function PALCCache(
         u_0,
         u_1,
         u_t,
+        ret
     )
 end
 
