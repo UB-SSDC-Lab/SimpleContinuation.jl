@@ -147,6 +147,164 @@ function palc_correction!(
     return success, terminate_continuation
 end
 
+## Correction method if we are using a set of callbacks
+# Only difference here is that instead of looking for 1 callback being triggered, we look for if any of the set is triggered sequentially, then perform RF.
+# Note: should probably later improve this to cover the case that multiple callbacks trigger in a single step, but for now we are looking at them sequentially
+function palc_correction!(
+    cache,
+    alg,
+    p::ContinuationProblem,
+    solvers,
+    dsmin,
+    dsmax,
+    term_callback::TerminateContinuationCallbackSet,
+    analysis_callback,
+    trace,
+)
+    # Get cache variables
+    u0 = cache.u0
+    λ0 = cache.λ0
+    δu0 = cache.δu0
+    δλ0 = cache.δλ0
+    uλpred = cache.uλpred
+    n = length(δu0)
+
+    # Compute inner product of tangent with itself
+    dotδ = alg.inner_prod(δu0, δλ0)
+
+    # Get problem variables
+    λmin = p.λ_bounds[1]
+    λmax = p.λ_bounds[2]
+
+    # Solve nonlinear problem (reducing step-size if necessary)
+    attempts = 0
+    success = true
+    done = false
+    hit_bnd = NaN
+    cb_trig = false
+    rf_succ = false
+    triggered_callback = nothing # which (if any) callback was triggered
+    while !done
+        # Update attempts
+        attempts += 1
+
+        # Compute α for ds
+        α = cache.ds / dotδ
+
+        # Update uλpred (clamping ds to try and stay in λ bounds)
+        # If clamped, set hit_bnd to the bound hit and we'll resolve
+        # if successful with constant λ
+
+        uλpred[end] = λ0 + α * δλ0
+        if uλpred[end] < λmin
+            α = (λmin - λ0) / δλ0
+            cache.ds = α * dotδ
+            uλpred[end] = λmin
+            hit_bnd = λmin
+            print_correction_trace(cache, trace, 2)
+        elseif uλpred[end] > λmax
+            α = (λmax - λ0) / δλ0
+            cache.ds = α * dotδ
+            uλpred[end] = λmax
+            hit_bnd = λmax
+            print_correction_trace(cache, trace, 2)
+        else
+            print_correction_trace(cache, trace, 1)
+        end
+
+        uλpred[1:n] .= u0 .+ α .* δu0
+
+        # Solve the palc nonlinear problem
+        uλ, retcode = solve_palc_nlp!(solvers, uλpred, trace)
+
+        # Check if successful
+        if SciMLBase.successful_retcode(retcode)
+
+            # Check if callback triggered (iterating through in order)
+            for jj in eachindex(term_callback.callbacks)
+                cb_trig = check(term_callback.callbacks[jj], uλ, cache, alg, p)
+                if cb_trig # break once one is triggered
+                    triggered_callback = jj
+                    break
+                end
+            end
+
+            # If callback triggered, perform regula falsi root finding method and update uλ
+            if cb_trig
+                rf_succ = palc_target_callback_event!(
+                    uλ, cache, alg, p, solvers, term_callback.callbacks[triggered_callback], trace
+                )
+                hit_bnd = NaN # Reset since we're likely not stepping as far and will recheck
+            end
+
+            # Check if we crossed the boundary
+            if uλ[end] < λmin
+                hit_bnd = λmin
+            elseif uλ[end] > λmax
+                hit_bnd = λmax
+            end
+
+            if cb_trig && !rf_succ # Triggered callback but rootfind was unsuccessful
+                cb_trig = false
+                hit_bnd = NaN
+                scale_and_clamp_ds!(cache, 0.5, dsmin, dsmax)
+            elseif isnan(hit_bnd)
+                # Push solution and set done
+                set_successful_iterate!(cache, uλ)
+                done = true
+
+                # Print trace if desired
+                print_correction_trace(cache, trace, 3)
+            else
+                # Update cache without pushing solution to curve
+                set_successful_iterate!(cache, uλ, false)
+
+                # Print trace if desired
+                print_correction_trace(cache, trace, 3)
+
+                # Target solution on boundary
+                flag = palc_target_solution_on_boundary!(cache, hit_bnd, solvers, trace)
+
+                # If targeting solution on boundary was successful, we're done. Otherwise, reduce ds
+                if flag
+                    done = true
+                else
+                    hit_bnd = NaN
+                    scale_and_clamp_ds!(cache, 0.5, dsmin, dsmax)
+                end
+            end
+        else # solve is not successful
+            if abs(cache.ds) == dsmin
+                done = true
+                success = false
+                cache.ret = :MinimumStepSize # update ret with 'done' condition. This won't be overwritten since success=false (see continuation.jl) 
+            else
+                # Reduce step-size and reattempt
+                scale_and_clamp_ds!(cache, 0.5, dsmin, dsmax)
+            end
+        end
+    end
+
+    # Update ds is we were successful
+    # Consider only updating is successful in < n number of attempts
+    success && scale_and_clamp_ds!(cache, 1.2, dsmin, dsmax)
+
+    # Update the callback if we were successfull
+    success && update!(term_callback, cache, alg, p)
+
+    # Call the analysis callback if we were successful
+    success && call!(analysis_callback, cache)
+
+    # Handle termination flag
+    terminate_continuation = !isnan(hit_bnd) || cb_trig # hit bound or triggered callback
+
+    if terminate_continuation
+        set_successful_retcode!(cache, hit_bnd, cb_trig, triggered_callback)
+    end
+
+    return success, terminate_continuation
+end
+
 function print_correction_trace(cache::PALCCache, trace::Silent, stage)
     return nothing
 end
@@ -400,8 +558,19 @@ function palc_correction_jacobian!(J, uλ, p)
 end
 
 function set_successful_retcode!(cache, hit_bnd, cb_trig)
+    # recover success condition and set
     if isnan(hit_bnd) && cb_trig
-        cache.ret = :CallbackTermination
+        cache.ret = :Callback
+    elseif !cb_trig
+        cache.ret = :HitBound
+    end
+end
+
+function set_successful_retcode!(cache, hit_bnd, cb_trig, jj)
+    # recover success condition and set
+    if isnan(hit_bnd) && cb_trig
+        retstr = "Callback$jj"
+        cache.ret = Symbol(retstr)
     elseif !cb_trig
         cache.ret = :HitBound
     end
