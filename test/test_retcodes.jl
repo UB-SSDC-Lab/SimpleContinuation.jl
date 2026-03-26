@@ -42,7 +42,7 @@ cache = continuation(
     #trace=ContinuationSteps(),
     term_callback=FoldBifurcationTerminationCallback(),
 )
-@test cache.ret == :CallbackTermination
+@test cache.ret == :Callback
 
 # Should term due to hitting boundary
 cache = continuation(

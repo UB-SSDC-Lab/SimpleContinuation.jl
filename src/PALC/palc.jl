@@ -82,6 +82,13 @@ mutable struct PALCCache{MT<:Union{Matrix{Float64},SparseMatrixCSC{Float64,Int}}
 
     # Return code
     ret::Symbol # could also do a custom type for pretty viewing like sciml but symbols should work just fine
+    # current implemented retcodes:
+    # :HitBound; successful, hit boundary
+    # :Callback; successful, terminated due to callback
+    # :Callbacki; successful, terminated due to callback i in callback set
+    # :Maxiters; unsuccessful (generally), terminated due to max iterations
+    # :MinimumStepSize; unsuccessful, terminated due to shrinking stepsize
+    # :None; this is what the retcode is initialized to, so seeing this after running continuation signifies an unhandled exit condition
 end
 
 function PALCCache(

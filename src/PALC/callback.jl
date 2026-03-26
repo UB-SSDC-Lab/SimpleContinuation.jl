@@ -53,6 +53,17 @@ mutable struct InternalTerminateContinuationCallback{FType} <:
     end
 end
 
+# Callback sets
+mutable struct TerminateContinuationCallbackSet{T<:Tuple} <: RootSolveContinuationCallback
+    callbacks::T # Each argument should be a RootSolveContinuationCallback, or else errors will occur later
+    # the user CAN costruct with a tuple of anything, but should use the below constructor with varargs
+end
+
+# don't need to do any handling like in SciMLBase, since we only have 1 type of callback for now
+function TerminateContinuationCallbackSet(callbacks::Union{RootSolveContinuationCallback, Nothing}...)
+    TerminateContinuationCallbackSet(callbacks)
+end
+
 # Simple continuation callback for analyzing the status of the continuation process.
 # Has no zero finding functionality
 struct AnalysisContinuationCallback{FType} <: AbstractContinuationCallback
@@ -76,6 +87,13 @@ function initialize!(cb::InternalRootSolveContinuationCallback, cache::PALCCache
     cb.val_0 = cb.f(cache.u0, cache.λ0, cache, alg, prob)
     return nothing
 end
+function initialize!(cb::TerminateContinuationCallbackSet, cache::PALCCache, alg, prob)
+    # initialize each callback in the set
+    @inbounds for i in eachindex(cb.callbacks)
+        initialize!(cb.callbacks[i], cache, alg, prob)
+    end
+    return nothing
+end
 
 # Callback update
 update!(cb::Nothing, cache::PALCCache, alg, prob) = nothing
@@ -86,6 +104,11 @@ end
 function update!(cb::InternalRootSolveContinuationCallback, cache::PALCCache, alg, prob)
     cb.val_0 = cb.f(cache.u0, cache.λ0, cache, alg, prob)
     return nothing
+end
+function update!(cb::TerminateContinuationCallbackSet, cache::PALCCache, alg, prob)
+    @inbounds for i in eachindex(cb.callbacks)
+        update!(cb.callbacks[i], cache, alg, prob)
+    end
 end
 
 # Check the root solve callback (returns true if we stepped over zero)
@@ -130,5 +153,10 @@ end
 
 # Functions for handling different types of termination callbacks
 function handle_termination_callback(cb, cache, alg, p)
+    return cb
+end
+function handle_termination_callback(cb::TerminateContinuationCallbackSet{T}, cache, alg, p) where {T<:Tuple}
+    handle_cb_map_fun = cb-> handle_termination_callback(cb, cache, alg, p)
+    cb = TerminateContinuationCallbackSet(map(handle_cb_map_fun, cb.callbacks))
     return cb
 end
