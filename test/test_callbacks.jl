@@ -24,6 +24,7 @@ f_min_time = (F, u, s) -> scalar_test_fun!(F, u, s)
 Jz_min_time = (J, F, u, s) -> scalar_fun_ujac!(J, F, u, s)
 J_min_time = (J, F, u, s) -> scalar_fun_jac!(J, F, u, s)
 
+
 f1 = (x,λ) -> -1.5-x[1] # this should trigger BEFORE first fold bifurcation
 f2 = (x,λ) -> x[1] # this would trigger AFTER first fold bifurcation
 f3 = (x,λ) -> x[1] - 100 # this should never trigger
@@ -70,13 +71,14 @@ cache = continuation(
     both_sides=false,
     ds0=1e-2,
     dsmin=1e-2,
-    dsmax=0.1,
+    dsmax=0.0,
     max_cont_steps=1000,
     term_callback=set_2,
 )
 
-# Should terminate at cb1
-set_3 =  cb2
+# Should terminate at cb4, retcode :Callback1
+cb4 = SC.MaxSlopeTerminationCallback([1], 50)
+set_3 =  SC.TerminateContinuationCallbackSet(cb4, fold_bifurcation_cb)
 cache = continuation(
     ContinuationProblem(
         ContinuationFunction{Val{true}}(f_min_time, Jz_min_time, J_min_time),
@@ -86,10 +88,10 @@ cache = continuation(
     ),
     PALC(; predicter=Bordered());
     both_sides=false,
-    ds0=1e-2,
+    ds0=1e-4, 
     dsmin=1e-4,
-    dsmax=0.1,
-    max_cont_steps=1000,
+    dsmax=1e-3, # needed to reduce step size to force the slope to reach a high value (larger steps step over high-slope regions and trigger the fold bifurcation cb first)
+    max_cont_steps=10e3,
     term_callback=set_3,
     trace=ContinuationAndNewtonSteps()
 )
