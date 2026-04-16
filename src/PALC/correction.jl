@@ -98,17 +98,18 @@ function palc_correction!(
                 # Print trace if desired
                 print_correction_trace(cache, trace, 3)
             else
-                # Update cache without pushing solution to curve
-                set_successful_iterate!(cache, uλ, false)
-
-                # Print trace if desired
-                print_correction_trace(cache, trace, 3)
 
                 # Target solution on boundary
                 flag = palc_target_solution_on_boundary!(cache, hit_bnd, solvers, trace)
 
                 # If targeting solution on boundary was successful, we're done. Otherwise, reduce ds
                 if flag
+                    # Only set successful if targeting worked
+                    # Update cache without pushing solution to curve
+                    set_successful_iterate!(cache, uλ, false)
+
+                    # Print trace if desired
+                    print_correction_trace(cache, trace, 3)
                     done = true
                 else
                     hit_bnd = NaN
@@ -256,17 +257,17 @@ function palc_correction!(
                 # Print trace if desired
                 print_correction_trace(cache, trace, 3)
             else
-                # Update cache without pushing solution to curve
-                set_successful_iterate!(cache, uλ, false)
-
-                # Print trace if desired
-                print_correction_trace(cache, trace, 3)
 
                 # Target solution on boundary
                 flag = palc_target_solution_on_boundary!(cache, hit_bnd, solvers, trace)
 
                 # If targeting solution on boundary was successful, we're done. Otherwise, reduce ds
                 if flag
+                    #  Update cache without pushing solution to curve
+                    set_successful_iterate!(cache, uλ, false)
+
+                    # Print trace if desired
+                    print_correction_trace(cache, trace, 3)
                     done = true
                 else
                     hit_bnd = NaN
