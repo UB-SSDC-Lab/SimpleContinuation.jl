@@ -46,38 +46,46 @@ function compute_initial_tangent(
     prob::ContinuationProblem,
     solvers,
     trace::AbstractTraceLevel,
-)
-    # Perturb the natural continuation parameter to construct initial tangent
-    λ_pert = method.step_scale_factor * cache.ds
-    perturb_natural_continuation_parameter!(cache, λ_pert)
+    dsmin,
+    dsmax
+)   
+    done = false
+    while !done
+        # Perturb the natural continuation parameter to construct initial tangent
+        λ_pert = method.step_scale_factor * cache.ds
+        perturb_natural_continuation_parameter!(cache, λ_pert)
 
-    # Print trace if desired
-    print_initialization_trace(cache, trace, 2)
+        # Print trace if desired
+        print_initialization_trace(cache, trace, 2)
 
-    # Resolve the problem with perturbed parameter
-    u_sol, retcode = solve_natural_nlp!(solvers, cache.u0, trace)
+        # Resolve the problem with perturbed parameter
+        u_sol, retcode = solve_natural_nlp!(solvers, cache.u0, trace)
 
-    if SciMLBase.successful_retcode(retcode)
-        # Compute and set the initial tangent
-        u0 = cache.u0                       # The current solution (from first solve)
-        n = length(u0)
-        δuλ0 = cache.δuλ0                   # The predicted tangent direction
+        if SciMLBase.successful_retcode(retcode)
+            # Compute and set the initial tangent
+            u0 = cache.u0                       # The current solution (from first solve)
+            n = length(u0)
+            δuλ0 = cache.δuλ0                   # The predicted tangent direction
 
-        # Set secant direction
-        δuλ0[1:n] .= u_sol .- cache.u0
-        δuλ0[end] = λ_pert
+            # Set secant direction
+            δuλ0[1:n] .= u_sol .- cache.u0
+            δuλ0[end] = λ_pert
 
-        # Normalize the tangent direction and ensure it is in the positive λ direction
-        sf = λ_pert < 0 ? -1.0 : 1.0
-        n_inv = sf / norm(δuλ0)
-        δuλ0 .*= n_inv
+            # Normalize the tangent direction and ensure it is in the positive λ direction
+            sf = λ_pert < 0 ? -1.0 : 1.0
+            n_inv = sf / norm(δuλ0)
+            δuλ0 .*= n_inv
 
-        update_tangent!(cache, δuλ0)        # Update the tangent direction in cache
-        cache.δuλ0_initial .= δuλ0          # Save initial tangent
-    else
-        error(
-            "Solve to compute initial tangent failed! Consider reducing perturbation size."
-        )
+            update_tangent!(cache, δuλ0)        # Update the tangent direction in cache
+            cache.δuλ0_initial .= δuλ0          # Save initial tangent
+            done = true
+        elseif cache.ds == dsmin # we have tried with the smallest allowable ds and still failed, so error.
+            error(
+                "Solve to compute initial tangent failed! Consider reducing dsmin."
+            )
+        else
+            scale_and_clamp_ds!(cache, 0.5, dsmin, dsmax) # we are not yet at ds=dsmin, so scale and re-try
+        end
     end
     return nothing
 end
@@ -89,6 +97,8 @@ function compute_initial_tangent(
     prob::ContinuationProblem,
     solvers,
     trace::AbstractTraceLevel,
+    dsmin, 
+    dsmax
 )
     # Get user tangent
     n = length(cache.u0)
@@ -114,6 +124,8 @@ function compute_initial_tangent(
     prob::ContinuationProblem,
     solvers,
     trace::AbstractTraceLevel,
+    dsmin,
+    dsmax
 )
     n = length(cache.u0)
     uλpred = cache.uλpred
@@ -179,6 +191,8 @@ function initialize_palc!(
     p::ContinuationProblem,
     solvers,
     trace::AbstractTraceLevel,
+    dsmin, 
+    dsmax
 )
     # Get information from the problem
     u0 = p.u0
@@ -206,7 +220,7 @@ function initialize_palc!(
     end
 
     # Compute the initial tangent
-    compute_initial_tangent(initial_tangent, cache, alg, p, solvers, trace)
+    compute_initial_tangent(initial_tangent, cache, alg, p, solvers, trace, dsmin, dsmax)
 
     return nothing
 end
