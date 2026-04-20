@@ -25,7 +25,7 @@ function continuation(
     solvers = PALCSolverCache(p, alg, cache, newton_iter, newton_tol, newton_max_resid)
 
     # Initialize continuation
-    initialize_palc!(initial_tangent, cache, alg, p, solvers, trace)
+    initialize_palc!(initial_tangent, cache, alg, p, solvers, trace, dsmin, dsmax)
 
     # Continuation loop
     continuation!(
