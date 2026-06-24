@@ -89,6 +89,11 @@ function palc_correction!(
             if cb_trig && !rf_succ # Triggered callback but rootfind was unsuccessful
                 cb_trig = false
                 hit_bnd = NaN
+                if abs(cache.ds)==dsmin # check if ds=dsmin to avoid getting stuck repeating the failed rootfind
+                    done = true
+                    success = false
+                    set_min_stepsize_retcode!(cache) # failed termination if this occurs
+                end
                 scale_and_clamp_ds!(cache, 0.5, dsmin, dsmax)
             elseif isnan(hit_bnd)
                 # Push solution and set done
@@ -120,7 +125,7 @@ function palc_correction!(
             if abs(cache.ds) == dsmin
                 done = true
                 success = false
-                cache.ret = :MinimumStepSize # update ret with 'done' condition. This won't be overwritten since success=false (see continuation.jl) 
+                set_min_stepsize_retcode!(cache) # update ret with 'done' condition. This won't be overwritten since success=false (see continuation.jl) 
             else
                 # Reduce step-size and reattempt
                 scale_and_clamp_ds!(cache, 0.5, dsmin, dsmax)
@@ -248,6 +253,11 @@ function palc_correction!(
             if cb_trig && !rf_succ # Triggered callback but rootfind was unsuccessful
                 cb_trig = false
                 hit_bnd = NaN
+                if abs(cache.ds)==dsmin # check if ds=dsmin to avoid getting stuck repeating the failed rootfind
+                    done = true
+                    success = false
+                    set_min_stepsize_retcode!(cache) # failed termination if this occurs
+                end
                 scale_and_clamp_ds!(cache, 0.5, dsmin, dsmax)
             elseif isnan(hit_bnd)
                 # Push solution and set done
@@ -278,7 +288,7 @@ function palc_correction!(
             if abs(cache.ds) == dsmin
                 done = true
                 success = false
-                cache.ret = :MinimumStepSize # update ret with 'done' condition. This won't be overwritten since success=false (see continuation.jl) 
+                set_min_stepsize_retcode!(cache) # update ret with 'done' condition. This won't be overwritten since success=false (see continuation.jl) 
             else
                 # Reduce step-size and reattempt
                 scale_and_clamp_ds!(cache, 0.5, dsmin, dsmax)
@@ -575,4 +585,9 @@ function set_successful_retcode!(cache, hit_bnd, cb_trig, jj)
     elseif !cb_trig
         cache.ret = :HitBound
     end
+end
+
+function set_min_stepsize_retcode!(cache)
+    cache.ret = :MinimumStepSize
+    return nothing
 end
