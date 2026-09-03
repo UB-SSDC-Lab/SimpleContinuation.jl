@@ -1,5 +1,5 @@
 # Callbacks
 ```@autodocs
 Modules = [SimpleContinuation]
-Pages = ["callback.jl", "special_callbacks.jl"]
+Pages = ["PALC/callback.jl", "PALC/special_callbacks.jl"]
 ```
