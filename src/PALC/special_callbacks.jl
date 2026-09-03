@@ -7,6 +7,15 @@ struct FoldBifurcationTerminationCallback <: RootSolveContinuationCallback
     end
 end
 
+# This callback detects folds, but does not terminate the process
+# It will instead save the detected point to the cache in the detected_points field of the PALCCache
+struct FoldBifurcationDetectionCallback <: RootSolveContinuationCallback
+    tol::Float64
+    function FoldBifurcationDetectionCallback(; tol=1e-12)
+        return new(tol)
+    end
+end
+
 # Utility function for handling the detection of fold bifurcations
 function fold_detection_callback_function(u, λ, cache, alg, prob)
     # Fold detection test is based on the bordered prediction strategy. We want to
@@ -44,5 +53,12 @@ end
 function handle_termination_callback(cb::FoldBifurcationTerminationCallback, cache, alg, p)
     return InternalTerminateContinuationCallback(
         fold_detection_callback_function, cache, alg, p; tol=cb.tol
+    )
+end
+
+# Handle fold detection callback
+function handle_detection_callback(cb::FoldBifurcationDetectionCallback, cache, alg, p)
+    return InternalDetectionCallback(
+        fold_detection_callback_function, cache, alg, p, :Fold; tol=cb.tol
     )
 end

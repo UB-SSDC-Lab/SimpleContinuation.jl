@@ -36,7 +36,7 @@ export ContinuationFunction, SparseContinuationFunction
 export ContinuationProblem
 
 export TerminateContinuationCallback, AnalysisContinuationCallback, TerminateContinuationCallbackSet
-export FoldBifurcationTerminationCallback
+export FoldBifurcationTerminationCallback, FoldBifurcationDetectionCallback
 
 export PALC
 export StandardDotProduct

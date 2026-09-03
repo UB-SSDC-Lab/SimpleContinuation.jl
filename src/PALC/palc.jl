@@ -51,6 +51,9 @@ mutable struct PALCCache{MT<:Union{Matrix{Float64},SparseMatrixCSC{Float64,Int}}
     # Continuation curve
     br::Vector{Tuple{Vector{Float64},Float64}}
 
+    # Special points (found with Detection Callbacks)
+    detected_points::Vector{Tuple{Vector{Float64},Float64, Symbol}}
+
     # Current iterate
     uλ0::Vector{Float64}
     u0::Vector{Float64}
@@ -107,6 +110,7 @@ function PALCCache(
 
     # Allocate memory for storing curve
     br = Vector{Tuple{Vector{Float64},Float64}}(undef, 0)
+    detected_points = Vector{Tuple{Vector{Float64},Float64, Symbol}}(undef, 0)
 
     # Allocate memory for prediction
     δu0 = similar(u0)
@@ -132,6 +136,7 @@ function PALCCache(
     return PALCCache{Matrix{Float64}}(
         ds0,
         br,
+        detected_points,
         uλ0,
         u0c,
         λ0,
@@ -172,6 +177,7 @@ function PALCCache(
 
     # Allocate memory for storing curve
     br = Vector{Tuple{Vector{Float64},Float64}}(undef, 0)
+    detected_points = Vector{Tuple{Vector{Float64},Float64, Symbol}}(undef, 0)
 
     # Allocate memory for prediction
     δu0 = similar(u0)
@@ -199,6 +205,7 @@ function PALCCache(
     return PALCCache{SparseMatrixCSC{Float64,Int}}(
         ds0,
         br,
+        detected_points,
         uλ0,
         u0c,
         λ0,

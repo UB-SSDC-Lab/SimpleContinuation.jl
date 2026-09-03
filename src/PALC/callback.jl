@@ -53,6 +53,37 @@ mutable struct InternalTerminateContinuationCallback{FType} <:
     end
 end
 
+# This callback is functionally identical to the InternalTerminateContinuationCallback, in terms of the fact that
+# it is an internal-only callback that has root-solve functionality, but it callbacks of this type will not
+# terminate the calculated point, but rather save it to the cache. This will let us save folds without restarting the algorithm, for instance.
+mutable struct InternalDetectionCallback{FType} <: InternalRootSolveContinuationCallback
+    # The callback function
+    f::FType # Takes the current iterate as arguments and returns Float64
+
+    # Current and previous callback value
+    val_0::Float64
+
+    # Tolerance
+    tol::Float64
+
+    # Cache for the iterate to use within the root-find, so the true iterate isn't overwritten
+    uλ::Vector{Float64}
+
+    point_type::Symbol # symbol to denote type of detected point (e.g., :Fold for fold bifurcations)
+
+    # Constructer
+    function InternalDetectionCallback(
+        f::F, cache, alg, prob, point_type; tol=1e-12
+    ) where {F<:Function}
+        fwrap = FunctionWrappersWrapper(
+            f,
+            (Tuple{Vector{Float64},Float64,typeof(cache),typeof(alg),typeof(prob)},),
+            (Float64,),
+        )
+        return new{typeof(fwrap)}(fwrap, NaN, tol, similar(cache.uλ0), point_type)
+    end
+end
+
 # Callback sets
 mutable struct TerminateContinuationCallbackSet{T<:Tuple} <: RootSolveContinuationCallback
     callbacks::T # Each argument should be a RootSolveContinuationCallback, or else errors will occur later
@@ -159,4 +190,56 @@ function handle_termination_callback(cb::TerminateContinuationCallbackSet{T}, ca
     handle_cb_map_fun = cb-> handle_termination_callback(cb, cache, alg, p)
     cb = TerminateContinuationCallbackSet(map(handle_cb_map_fun, cb.callbacks))
     return cb
+end
+
+# functions for handling general detection callbacks
+function handle_detection_callback(cb, cache, alg, p)
+    return cb
+end
+
+function perform_detection_callback!(cache, alg, prob, solvers, callback::Nothing, uλ, λmax, λmin, trace)
+    return true
+end
+
+function perform_detection_callback!(cache, alg, prob, solvers, callback::InternalDetectionCallback, uλc, λmax, λmin, trace)
+    # If the success is false, the step-size will be halved and step will be retried
+    det_success = false
+    
+    # store original value of iterate
+    callback.uλ .= uλc
+
+    # Check callback
+    cb_trig = check(callback, uλc, cache, alg, prob)
+
+    if cb_trig
+        uλc .= view(uλc, :)
+
+        rf_succ = palc_target_callback_event!(
+                    uλc, cache, alg, prob, solvers, callback, trace
+        )
+        
+        if rf_succ
+            # only save detected point if it is within bounds
+            if uλc[end] <= λmax && uλc[end] >= λmin
+                # Save the detected point to the cache
+                push!(cache.detected_points, (copy(uλc[1:end-1]), uλc[end], callback.point_type))
+
+                # Also push the point to the curve (but don't set a successful iterate)
+                push!(cache.br, (copy(uλc[1:end-1]), uλc[end]))
+                
+            end
+            # If the root-find was successful, we consider the detection a success
+            # regardless of if we saved the point or not, since it may have been out of bounds
+            det_success = true
+        end
+
+    else
+        det_success = true # if the callback is not triggered, consider it a success (i.e., not a failure)
+    end
+
+    # reset iterate to original value
+    uλc .= callback.uλ
+
+    return det_success
+
 end

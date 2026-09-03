@@ -13,6 +13,7 @@ function continuation(
     newton_max_resid=1.0,
     term_callback=nothing,
     analysis_callback=nothing,
+    detection_callback=nothing,
     trace=Silent(),
 )
     # Construct PALC Cache
@@ -20,6 +21,7 @@ function continuation(
 
     # Wrap user provided callback functions
     handled_term_callback = handle_termination_callback(term_callback, cache, alg, p)
+    handled_detection_callback = handle_detection_callback(detection_callback, cache, alg, p)
 
     # Construct numerical method cache
     solvers = PALCSolverCache(p, alg, cache, newton_iter, newton_tol, newton_max_resid)
@@ -38,6 +40,7 @@ function continuation(
         max_cont_steps,
         handled_term_callback,
         analysis_callback,
+        handled_detection_callback,
         trace,
     )
     if both_sides
@@ -52,6 +55,7 @@ function continuation(
             max_cont_steps,
             handled_term_callback,
             analysis_callback,
+            handled_detection_callback,
             trace,
         )
     end
@@ -69,10 +73,12 @@ function continuation!(
     max_cont_steps,
     term_callback,
     analysis_callback,
+    detection_callback,
     trace,
 )
-    # Initialize the callback
+    # Initialize the callback(s)
     initialize!(term_callback, cache, alg, p)
+    initialize!(detection_callback, cache, alg, p)
 
     # Continuation loop
     iter = 0
@@ -86,7 +92,7 @@ function continuation!(
 
         # Perform correction step
         success, terminate_continuation = palc_correction!(
-            cache, alg, p, solvers, dsmin, dsmax, term_callback, analysis_callback, trace
+            cache, alg, p, solvers, dsmin, dsmax, term_callback, analysis_callback, detection_callback, trace
         )
 
         if iter >= max_cont_steps

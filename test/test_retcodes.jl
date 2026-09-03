@@ -80,3 +80,20 @@ cache = continuation(
 )
 @test cache.ret == :Maxiters
 
+# and stepsize
+cache = continuation(
+    ContinuationProblem(
+        ContinuationFunction{Val{true}}(f_min_time, Jz_min_time, J_min_time),
+        u0,
+        λ0,
+        (λ0, 1.0),
+    ),
+    PALC(; predicter=Bordered());
+    both_sides=false,
+    ds0=1.,
+    dsmin=1.,
+    dsmax=1.,
+    max_cont_steps=10,
+    trace=ContinuationSteps(),
+)
+@test cache.ret == :MinimumStepSize

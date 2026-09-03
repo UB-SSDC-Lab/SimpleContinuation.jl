@@ -39,6 +39,29 @@ cb3 = SC.TerminateContinuationCallback(f3)
 u0 = [-2.0]
 λ0 = -1.0
 
+# ===== Detection Callbacks
+cache = continuation(
+    ContinuationProblem(
+        ContinuationFunction{Val{true}}(f_min_time, Jz_min_time, J_min_time),
+        u0,
+        λ0,
+        (λ0, 1.0),
+    ),
+    PALC(; predicter=Bordered());
+    both_sides=false,
+    ds0=1e-2,
+    dsmin=1e-2,
+    dsmax=0.1,
+    max_cont_steps=1000,
+    detection_callback=FoldBifurcationDetectionCallback(),
+)
+#parse and test detected points
+p1 = [cache.detected_points[1][1][1], cache.detected_points[1][2]]
+p2 = [cache.detected_points[2][1][1], cache.detected_points[2][2]]
+@test isapprox(p1, [-1.0, 2/3])
+@test isapprox(p2, [1.0, -2/3])
+
+# ========== Callback Sets
 # Set 1: should terminate at fold and have retcode :Callback1
 set_1 = SC.TerminateContinuationCallbackSet(fold_bifurcation_cb, cb2) 
 cache = continuation(
@@ -56,7 +79,7 @@ cache = continuation(
     max_cont_steps=1000,
     term_callback=set_1,
 )
-
+@test cache.ret == :Callback1
 
 # set 2 should have retcode :Callback2
 set_2 = SC.TerminateContinuationCallbackSet(cb3, cb2) 
@@ -71,14 +94,14 @@ cache = continuation(
     both_sides=false,
     ds0=1e-2,
     dsmin=1e-2,
-    dsmax=0.0,
+    dsmax=0.1,
     max_cont_steps=1000,
     term_callback=set_2,
 )
+@test cache.ret == :Callback2
 
-# Should terminate at cb4, retcode :Callback1
-cb4 = SC.MaxSlopeTerminationCallback([1], 50)
-set_3 =  SC.TerminateContinuationCallbackSet(cb4, fold_bifurcation_cb)
+# test detection with a callback set
+set_1 = SC.TerminateContinuationCallbackSet(fold_bifurcation_cb, cb2) 
 cache = continuation(
     ContinuationProblem(
         ContinuationFunction{Val{true}}(f_min_time, Jz_min_time, J_min_time),
@@ -88,10 +111,13 @@ cache = continuation(
     ),
     PALC(; predicter=Bordered());
     both_sides=false,
-    ds0=1e-4, 
-    dsmin=1e-4,
-    dsmax=1e-3, # needed to reduce step size to force the slope to reach a high value (larger steps step over high-slope regions and trigger the fold bifurcation cb first)
-    max_cont_steps=10e3,
-    term_callback=set_3,
-    trace=ContinuationAndNewtonSteps()
+    ds0=1e-2,
+    dsmin=1e-2,
+    dsmax=0.1,
+    max_cont_steps=1000,
+    term_callback=set_1,
+    detection_callback = FoldBifurcationDetectionCallback()
 )
+p1 = [cache.detected_points[1][1][1], cache.detected_points[1][2]]
+@test isapprox(p1, [-1.0, 2/3])
+@test cache.ret == :Callback1

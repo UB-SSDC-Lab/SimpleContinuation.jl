@@ -8,6 +8,7 @@ function palc_correction!(
     dsmax,
     term_callback,
     analysis_callback,
+    detection_callback,
     trace,
 )
     # Get cache variables
@@ -79,6 +80,15 @@ function palc_correction!(
                 hit_bnd = NaN # Reset since we're likely not stepping as far and will recheck
             end
 
+            # Handle detection callback
+            # Returns true if: not triggered (or is nothing), triggered and rootfind successful
+            # the return is only used to reduce the step-size if failure occurs
+            # all saving is internal to the perform function, only saves if computed point is within bounds
+            # this does NOT edit the iterate uλ (well, technically it does, but it puts it resets it after)
+            # I think this leaves the possibility of a failed termination RF + successful RF here creating duplicate points, 
+            # so consider adding additional checks
+            detection_success = perform_detection_callback!(cache, alg, p, solvers, detection_callback, uλ, λmax, λmin, trace)
+
             # Check if we crossed the boundary
             if uλ[end] < λmin
                 hit_bnd = λmin
@@ -86,7 +96,7 @@ function palc_correction!(
                 hit_bnd = λmax
             end
 
-            if cb_trig && !rf_succ # Triggered callback but rootfind was unsuccessful
+            if (cb_trig && !rf_succ) || !detection_success # Triggered callback but rootfind was unsuccessful OR detection triggered and was unsuccessful
                 cb_trig = false
                 hit_bnd = NaN
                 if abs(cache.ds)==dsmin # check if ds=dsmin to avoid getting stuck repeating the failed rootfind
@@ -95,7 +105,7 @@ function palc_correction!(
                     set_min_stepsize_retcode!(cache) # failed termination if this occurs
                 end
                 scale_and_clamp_ds!(cache, 0.5, dsmin, dsmax)
-            elseif isnan(hit_bnd)
+            elseif isnan(hit_bnd) # bound was not hit (regardless of term callback)
                 # Push solution and set done
                 set_successful_iterate!(cache, uλ)
                 done = true
@@ -139,6 +149,7 @@ function palc_correction!(
 
     # Update the callback if we were successfull
     success && update!(term_callback, cache, alg, p)
+    success && update!(detection_callback, cache, alg, p)
 
     # Call the analysis callback if we were successful
     success && call!(analysis_callback, cache)
@@ -165,6 +176,7 @@ function palc_correction!(
     dsmax,
     term_callback::TerminateContinuationCallbackSet,
     analysis_callback,
+    detection_callback,
     trace,
 )
     # Get cache variables
@@ -243,6 +255,8 @@ function palc_correction!(
                 hit_bnd = NaN # Reset since we're likely not stepping as far and will recheck
             end
 
+            detection_success = perform_detection_callback!(cache, alg, p, solvers, detection_callback, uλ, λmax, λmin, trace)
+
             # Check if we crossed the boundary
             if uλ[end] < λmin
                 hit_bnd = λmin
@@ -250,7 +264,7 @@ function palc_correction!(
                 hit_bnd = λmax
             end
 
-            if cb_trig && !rf_succ # Triggered callback but rootfind was unsuccessful
+            if cb_trig && !rf_succ || !detection_success # Triggered callback but rootfind was unsuccessful
                 cb_trig = false
                 hit_bnd = NaN
                 if abs(cache.ds)==dsmin # check if ds=dsmin to avoid getting stuck repeating the failed rootfind
@@ -302,6 +316,7 @@ function palc_correction!(
 
     # Update the callback if we were successfull
     success && update!(term_callback, cache, alg, p)
+    success && update!(detection_callback, cache, alg, p)
 
     # Call the analysis callback if we were successful
     success && call!(analysis_callback, cache)
