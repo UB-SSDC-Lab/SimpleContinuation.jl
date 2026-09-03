@@ -1,5 +1,21 @@
 
-# This callback terminates the continuation process when a fold bifurcation is detected.
+"""
+    FoldBifurcationTerminationCallback(; tol=1e-12)
+
+A callback to terminate the continuation at a fold bifurcation.
+
+Detects a fold bifurcation by monitoring the sign of the prediction of the continuation parameter λ.
+Whenever a sign-change occurs, a regula-falsi solver attempts to precisely locate the root to tolerance `tol`.
+Upon success, the continuation is terminated.
+
+# Fields
+- `tol::Float`: Regula-falsi tolerance
+
+# Examples
+```julia
+callback = FoldBifurcationTerminationCallback()
+```
+"""
 struct FoldBifurcationTerminationCallback <: RootSolveContinuationCallback
     tol::Float64
     function FoldBifurcationTerminationCallback(; tol=1e-12)
@@ -7,8 +23,23 @@ struct FoldBifurcationTerminationCallback <: RootSolveContinuationCallback
     end
 end
 
-# This callback detects folds, but does not terminate the process
-# It will instead save the detected point to the cache in the detected_points field of the PALCCache
+"""
+    FoldBifurcationDetectionCallback(; tol=1e-12)
+
+A callback to detect and save fold bifurcation points.
+
+Detects a fold bifurcation by monitoring the sign of the prediction of the continuation parameter λ.
+Whenever a sign-change occurs, a regula-falsi solver attempts to precisely locate the root to tolerance `tol`.
+Upon success, the found point is saved to `PALCCache.detected_points`, if it is within the bounds `[λmin,λmax]`.
+
+# Fields
+- `tol::Float`: Regula-falsi tolerance
+
+# Examples
+```julia
+callback = FoldBifurcationDetectionCallback()
+```
+"""
 struct FoldBifurcationDetectionCallback <: RootSolveContinuationCallback
     tol::Float64
     function FoldBifurcationDetectionCallback(; tol=1e-12)

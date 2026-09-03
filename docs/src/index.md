@@ -8,7 +8,3 @@ Documentation for [SimpleContinuation](https://github.com/UB-SSDC-Lab/SimpleCont
 
 ```@index
 ```
-
-```@autodocs
-Modules = [SimpleContinuation]
-```

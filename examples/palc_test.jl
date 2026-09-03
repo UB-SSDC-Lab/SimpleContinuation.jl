@@ -64,9 +64,9 @@ an_cb = AnalysisContinuationCallback(an_fun)
 # Form the problem
 cont_prob = ContinuationProblem(
     ContinuationFunction{Val{true}}(TMvf, Jz, J),
-    [0.238616, 0.982747, 0.367876],
-    -2.0,
-    (-4.0, -0.9),
+    [0.238616, 0.982747, 0.367876], # u0
+    -2.0, # λ0
+    (-4.0, -0.9), #(λmin, λmax)
 )
 
 cache = continuation(
@@ -79,6 +79,7 @@ cache = continuation(
     #term_callback = cb_term,
     analysis_callback=an_cb,
     #trace=ContinuationAndNewtonSteps(),
+    detection_callback = FoldBifurcationDetectionCallback(),
     dsmax=0.01,
 )
 
@@ -87,4 +88,9 @@ ax = Axis(fig[1, 1])
 
 λs = map(i -> cache.br[i][2], 1:length(cache.br))
 Es = map(i -> cache.br[i][1][1], 1:length(cache.br))
-lines!(ax, λs, Es; color=:blue)
+λs_det = map(i->cache.detected_points[i][2], 1:length(cache.detected_points))
+Es_det = map(i -> cache.detected_points[i][1][1], 1:length(cache.detected_points))
+lines!(ax, λs, Es; color=:blue, label="Zero Curve")
+scatter!(ax, λs_det, Es_det; color=:red, markersize=7, label="Detected Folds")
+axislegend(ax;position=:rb)
+fig

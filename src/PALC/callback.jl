@@ -5,6 +5,14 @@ abstract type UserRootSolveContinuationCallback <: RootSolveContinuationCallback
 
 # This callback allows for performing continuation until a user provided callback function equals zero,
 # at which point, the method will find the zero precisely before terminating
+"""
+    TerminateContinuationCallback
+
+Terminate the continuation when a user-provided callback equals zero.
+
+When a sign change in the user-provided function is detected, a regula-falsi solver finds the precise point
+where the callback is satisfied, then terminates.
+"""
 mutable struct TerminateContinuationCallback{FType} <: UserRootSolveContinuationCallback
     # The callback function
     f::FType # Takes the current iterate as arguments and returns Float64
@@ -15,7 +23,23 @@ mutable struct TerminateContinuationCallback{FType} <: UserRootSolveContinuation
     # Tolerance
     tol::Float64
 
-    # Constructor
+    @doc"""
+        TerminateContinuationCallback(f::F; tol=1e-12)
+    
+    Constructor for `TerminateContinuationCallback`.
+    
+    # Arguments
+    - `f::Function`: user defined callabck function of form f(u,λ)
+
+    # Kwargs
+    - `tol::Float`: Tolerance for regula-falsi solver. Defaults to 1e-12.
+
+    # Examples
+    ```julia
+    cb_fun = (u, λ) -> u[1] # terminate when first unknown is zero
+    cb = TerminateContinuationCallback(cb_fun)
+    ```
+    """
     function TerminateContinuationCallback(f::F; tol=1e-12) where {F<:Function}
         fwrap = FunctionWrappersWrapper(f, (Tuple{Vector{Float64},Float64},), (Float64,))
         return new{typeof(fwrap)}(fwrap, NaN, tol)

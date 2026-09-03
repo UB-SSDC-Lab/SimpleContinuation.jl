@@ -14,7 +14,10 @@ makedocs(;
         edit_link="main",
         assets=String[],
     ),
-    pages=["Home" => "index.md"],
+    pages=[
+        "Home" => "index.md",
+        "Public API"=>["public/callbacks.md"]
+    ],
 )
 
 deploydocs(; repo="github.com/UB-SSDC-Lab/SimpleContinuation.jl", devbranch="main")
