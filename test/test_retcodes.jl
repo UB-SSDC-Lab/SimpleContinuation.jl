@@ -94,6 +94,6 @@ cache = continuation(
     dsmin=1.,
     dsmax=1.,
     max_cont_steps=10,
-    trace=ContinuationSteps(),
+    #trace=ContinuationSteps(),
 )
 @test cache.ret == :MinimumStepSize

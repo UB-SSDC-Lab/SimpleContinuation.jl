@@ -74,7 +74,6 @@ mutable struct PALCCache{MT<:Union{Matrix{Float64},SparseMatrixCSC{Float64,Int}}
 
     # PALC Correction
     uλpred::Vector{Float64}
-    δu::Vector{Float64}     # The change in u for the corrent iteration during correction
     Ffun::Vector{Float64}   # Storage for the function residuals (not including hyperplane constraint)
     Jfun::MT                # Storage for the function Jacobian (not including hyperplane constraint)
 
@@ -123,7 +122,6 @@ function PALCCache(
     δuλ0_i = similar(δuλ0)
 
     # Allocate memory for correction
-    δu = similar(u0)
     uλpred = Vector{Float64}(undef, n + 1)
     Ffun = similar(u0)
     Jfun = Matrix{Float64}(undef, n, n + 1)
@@ -148,7 +146,6 @@ function PALCCache(
         0.0,
         δuλ0_i,
         uλpred,
-        δu,
         Ffun,
         Jfun,
         u_0,
@@ -190,7 +187,6 @@ function PALCCache(
     δuλ0_i = similar(δuλ0)
 
     # Allocate memory for correction
-    δu = similar(u0)
     uλpred = Vector{Float64}(undef, n + 1)
     Ffun = similar(u0)
     Jfun = copy(J_prototype)
@@ -217,7 +213,6 @@ function PALCCache(
         0.0,
         δuλ0_i,
         uλpred,
-        δu,
         Ffun,
         Jfun,
         u_0,
