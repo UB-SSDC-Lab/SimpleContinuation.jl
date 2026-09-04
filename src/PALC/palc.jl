@@ -1,5 +1,10 @@
 # Struct for storing all information for the PALC algorithm
 # (includes algorithm linear and nonlinear solve dependancies)
+"""
+    PALC
+
+Data type for storing all information for PALC algorithm.
+"""
 struct PALC{P,D<:AbstractInnerProduct,LS,NLS,NTC}
     # PALC normalization
     inner_prod::D
@@ -9,6 +14,24 @@ struct PALC{P,D<:AbstractInnerProduct,LS,NLS,NTC}
     nlsolve::NLS
     termcond::NTC
 
+    @doc"""
+        PALC(; kwargs...)
+    
+    Contructor for PALC algorithm.
+    
+    # Kwargs
+    - `predicter::AbstractPredictor`: Prediction method. Default (recommended): `Bordered()`
+    - `inner_product::AbstractInnerProduct`: Inner product to use throughout. Default: `StandardDotProduct()`
+    - `linesearch`: Line search method provided by `LineSearch.jl`. Default: `LiFukushimaLineSearch()`
+    - `linsolve`: Linear solve algorithm provided by `LinearSolve.jl`. Default `SVDFactorization()`
+    - `termcond`: Termination condition for solvers. Default: `termcond=NonlinearSolve.AbsTerminationMode()`
+
+    # Examples
+    ```julia
+    pred = Secant() # secant predictor
+    alg = PALC(; predicter=pred) # all defaults except prediction method
+    ```
+    """
     function PALC(;
         predicter=Bordered(),
         inner_prod=StandardDotProduct(),
@@ -43,7 +66,35 @@ struct PALC{P,D<:AbstractInnerProduct,LS,NLS,NTC}
     end
 end
 
-# A Cache for the PALC algorithm
+"""
+    PALCCache{MT<:Union{Matrix{Float64},SparseMatrixCSC{Float64,Int}}}
+
+A cache for the PALC algorithm.
+
+This cache includes all preallocated storage required for PALC. It also contains the zero curve (solution), return code, and any special detected points.
+
+# Fields
+- `ds::Float64`: PALC step size
+- `br::Vector{Tuple{Vector{Float64},Float64}}`: Zero curve storage, in format `[(u0,λ0); (u1,λ1); ...; (un,λn)]` for `n` iterations.
+- `detected_points::Vector{Tuple{Vector{Float64},Float64, Symbol}}`: Storage for any points of interest detected by `FoldBifurcationDetectionCallback()` or any other detection callbacks (once implemented).
+- `uλ0::Vector{Float64}`: Full `[u;λ]` current iterate
+- `u0::Vector{Float64}`: Unknowns `u` current iterate.
+- `λ0::Float64`: Continuation parameter `λ` current iterate.
+- `λn::Float64`: Natural continuation parameter. Only used in select instances when required.
+- `bordered_mat::MT: Bordered matrix storage`
+- `bordered_b::Vector{Float64}`: Storage for RHS of bordered system.
+- `δuλ0::Vector{Float64}`: Storage for full tangent `[δu; δλ]`
+- `δu0::Vector{Float64}`: Storage for tangent components `δu`
+- `δλ::Float64`: Storage for tangent component `δλ`
+- `δuλ0_initial::Vector{Float64}`: Storage for initalized tangent computed before first iteration.
+- `uλpred::Vector{Float64}`: Storage for predicted point
+- `Ffun::Vector{Float64}`: Storage for continuation function residuals (not including hyperplane constraint)
+- `Jfun::MT`: Storage for non-square jacobian of system ∂F(u;λ)/∂[u;λ]. (not including hyperplane constraint)
+- `u_0::Vector{Float64}`: Storage for regula-falsi solver
+- `u_1::Vector{Float64}`: Storage for regula-falsi solver
+- `u_t::Vector{Float64}`: Storage for regula-falsi solver
+-  `ret::Symbol`: Exit condition return code.
+"""
 mutable struct PALCCache{MT<:Union{Matrix{Float64},SparseMatrixCSC{Float64,Int}}}
     # Algorithm parameters
     ds::Float64

@@ -16,7 +16,12 @@ makedocs(;
     ),
     pages=[
         "Home" => "index.md",
-        "Public API"=>["public/callbacks.md"]
+        "Examples"=>["example/basic_example.md"],
+        "Public API"=>[
+            "public/problem.md", 
+            "public/PALC.md",
+            "public/callbacks.md"
+            ]
     ],
 )
 
