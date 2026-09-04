@@ -8,7 +8,7 @@ This is a basic example of computing and plotting a continuation curve using PAL
     using FastClosures
 
     using ForwardDiff: ForwardDiff
-    using GLMakie
+    using CairoMakie
 
     function TMvf(F, z, E0)
         par_tm = (α=1.5, τ=0.013, J=3.07, E0=-2.0, τD=0.200, U0=0.3, τF=1.5, τS=0.007)
