@@ -6,5 +6,6 @@ using SafeTestsets
     @time @safetestset "Functions" begin
         include("test_functions.jl")
         include("test_retcodes.jl")
+        include("test_callbacks.jl")
     end
 end
