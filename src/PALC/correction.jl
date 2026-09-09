@@ -1,3 +1,30 @@
+abstract type AbstractStepLimiter end
+
+struct LocalCorrectionStepLimiter <: AbstractStepLimiter
+
+    frac::Float64
+
+    function LocalCorrectionStepLimiter(; frac=0.1)
+        return new(frac)
+    end
+
+end
+
+function enforce_local_correction(uλ, uλpred, ds, alg, sl::Nothing)
+    return false
+end
+
+function enforce_local_correction(uλ, uλpred, ds, alg, sl::AbstractStepLimiter)
+    error("Unrecognized correction step limiter!")
+    return false
+end
+
+function enforce_local_correction(uλ, uλpred, ds, alg, sl::LocalCorrectionStepLimiter)
+    n = length(uλ)-1
+    reject_step = alg.inner_prod(view(uλ,1:n)-view(uλpred, 1:n), view(uλ, n)-view(uλpred, n)) / abs(ds) > sl.frac ? true : false
+    return reject_step
+end
+
 
 function palc_correction!(
     cache,
@@ -9,6 +36,7 @@ function palc_correction!(
     term_callback,
     analysis_callback,
     detection_callback,
+    step_limiter,
     trace,
 )
     # Get cache variables
@@ -67,7 +95,7 @@ function palc_correction!(
         uλ, retcode = solve_palc_nlp!(solvers, uλpred, trace)
 
         # Check if successful
-        if SciMLBase.successful_retcode(retcode)
+        if SciMLBase.successful_retcode(retcode) # NL solve was successful
 
             # Check if callback triggered
             cb_trig = check(term_callback, uλ, cache, alg, p)
@@ -96,7 +124,11 @@ function palc_correction!(
                 hit_bnd = λmax
             end
 
-            if (cb_trig && !rf_succ) || !detection_success # Triggered callback but rootfind was unsuccessful OR detection triggered and was unsuccessful
+            # check if this step should be rejected on any addtl criteria
+            reject_step = enforce_local_correction(uλ, uλpred, cache.ds, alg, step_limiter)
+
+            # Determine if done
+            if (cb_trig && !rf_succ) || !detection_success || reject_step # Triggered callback but rootfind was unsuccessful OR detection triggered and was unsuccessful
                 cb_trig = false
                 hit_bnd = NaN
                 if abs(cache.ds)==dsmin # check if ds=dsmin to avoid getting stuck repeating the failed rootfind
@@ -131,7 +163,7 @@ function palc_correction!(
                     scale_and_clamp_ds!(cache, 0.5, dsmin, dsmax)
                 end
             end
-        else # solve is not successful
+        else # solve is not successful, so reduce ds
             if abs(cache.ds) == dsmin
                 done = true
                 success = false
@@ -177,6 +209,7 @@ function palc_correction!(
     term_callback::TerminateContinuationCallbackSet,
     analysis_callback,
     detection_callback,
+    step_limiter,
     trace,
 )
     # Get cache variables
@@ -264,7 +297,10 @@ function palc_correction!(
                 hit_bnd = λmax
             end
 
-            if cb_trig && !rf_succ || !detection_success # Triggered callback but rootfind was unsuccessful
+            # check if this step should be rejected on any addtl criteria
+            reject_step = enforce_local_correction(uλ, uλpred, cache.ds, alg, step_limiter)
+
+            if cb_trig && !rf_succ || !detection_success || reject_step # Triggered callback but rootfind was unsuccessful
                 cb_trig = false
                 hit_bnd = NaN
                 if abs(cache.ds)==dsmin # check if ds=dsmin to avoid getting stuck repeating the failed rootfind
