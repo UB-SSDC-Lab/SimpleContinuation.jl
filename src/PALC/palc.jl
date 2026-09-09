@@ -133,6 +133,11 @@ mutable struct PALCCache{MT<:Union{Matrix{Float64},SparseMatrixCSC{Float64,Int}}
     u_1::Vector{Float64}
     u_t::Vector{Float64}
 
+    # Verbose step info
+    tangents::Vector{Vector{Float64}}
+    predictions::Vector{Vector{Float64}}
+    dss::Vector{Float64}
+
     # Return code
     ret::Symbol # could also do a custom type for pretty viewing like sciml but symbols should work just fine
     # current implemented retcodes:
@@ -181,6 +186,12 @@ function PALCCache(
     u_0 = similar(u0)
     u_1 = similar(u0)
     u_t = similar(u0)
+
+    # Allocate memory for verbose info
+    tangents = Vector{Vector{Float64}}(undef, 0)
+    predictions = similar(tangents)
+    dss = Vector{Float64}(undef, 0)
+
     ret = :None # init return code (should always be overwritten)
     return PALCCache{Matrix{Float64}}(
         ds0,
@@ -202,6 +213,9 @@ function PALCCache(
         u_0,
         u_1,
         u_t,
+        tangents,
+        predictions,
+        dss,
         ret
     )
 end
@@ -247,6 +261,11 @@ function PALCCache(
     u_1 = similar(u0)
     u_t = similar(u0)
 
+    # Allocate memory for verbose info
+    tangents = Vector{Vector{Float64}}(undef, 0)
+    predictions = similar(tangents)
+    dss = Vector{Float64}(undef, 0)
+
     ret = :None # init return code
 
     return PALCCache{SparseMatrixCSC{Float64,Int}}(
@@ -269,6 +288,9 @@ function PALCCache(
         u_0,
         u_1,
         u_t,
+        tangents,
+        predictions,
+        dss,
         ret
     )
 end

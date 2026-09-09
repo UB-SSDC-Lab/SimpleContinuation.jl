@@ -236,7 +236,6 @@ function perform_detection_callback!(cache, alg, prob, solvers, callback::Intern
     cb_trig = check(callback, uλc, cache, alg, prob)
 
     if cb_trig
-        uλc .= view(uλc, :)
 
         rf_succ = palc_target_callback_event!(
                     uλc, cache, alg, prob, solvers, callback, trace
@@ -246,11 +245,7 @@ function perform_detection_callback!(cache, alg, prob, solvers, callback::Intern
             # only save detected point if it is within bounds
             if uλc[end] <= λmax && uλc[end] >= λmin
                 # Save the detected point to the cache
-                push!(cache.detected_points, (copy(uλc[1:end-1]), uλc[end], callback.point_type))
-
-                # Also push the point to the curve (but don't set a successful iterate)
-                push!(cache.br, (copy(uλc[1:end-1]), uλc[end]))
-                
+                push!(cache.detected_points, (copy(uλc[1:end-1]), uλc[end], callback.point_type))  
             end
             # If the root-find was successful, we consider the detection a success
             # regardless of if we saved the point or not, since it may have been out of bounds
