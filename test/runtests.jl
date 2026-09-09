@@ -7,5 +7,6 @@ using SafeTestsets
         include("test_functions.jl")
         include("test_retcodes.jl")
         include("test_callbacks.jl")
+        include("test_example.jl")
     end
 end
