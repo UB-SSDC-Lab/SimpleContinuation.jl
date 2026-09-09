@@ -15,6 +15,7 @@ function continuation(
     analysis_callback=nothing,
     detection_callback=nothing,
     trace=Silent(),
+    save_verbose=false
 )
     # Construct PALC Cache
     cache = PALCCache(p, alg, ds0)
@@ -42,6 +43,7 @@ function continuation(
         analysis_callback,
         handled_detection_callback,
         trace,
+        save_verbose
     )
     if both_sides
         prepare_continuation_in_reverse_direction!(cache, ds0)
@@ -57,6 +59,7 @@ function continuation(
             analysis_callback,
             handled_detection_callback,
             trace,
+            save_verbose
         )
     end
 
@@ -75,6 +78,7 @@ function continuation!(
     analysis_callback,
     detection_callback,
     trace,
+    save_verbose
 )
     # Initialize the callback(s)
     initialize!(term_callback, cache, alg, p)
@@ -95,6 +99,9 @@ function continuation!(
             cache, alg, p, solvers, dsmin, dsmax, term_callback, analysis_callback, detection_callback, trace
         )
 
+        # Save addtl info
+        success && save_verbose_step_info!(cache, save_verbose)
+
         if iter >= max_cont_steps
             done = true
             cache.ret = :Maxiters
@@ -107,6 +114,18 @@ function continuation!(
         end
     end
     return nothing
+end
+
+function save_verbose_step_info!(cache, save_verbose)
+    
+    if save_verbose
+        push!(cache.tangents, copy(cache.δuλ0))
+        push!(cache.predictions, copy(cache.uλpred))
+        push!(cache.dss, cache.ds)
+    end
+
+    return nothing
+
 end
 
 function prepare_continuation_in_reverse_direction!(cache::PALCCache, ds0)
