@@ -38,6 +38,8 @@ export ContinuationProblem
 export TerminateContinuationCallback, AnalysisContinuationCallback, TerminateContinuationCallbackSet
 export FoldBifurcationTerminationCallback, FoldBifurcationDetectionCallback
 
+export CorrectionStepLimiter
+
 export PALC
 export StandardDotProduct
 export ScaledInnerProduct

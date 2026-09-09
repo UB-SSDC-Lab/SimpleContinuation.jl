@@ -1,27 +1,51 @@
 abstract type AbstractStepLimiter end
 
-struct LocalCorrectionStepLimiter <: AbstractStepLimiter
+"""
+    struct CorrectionStepLimiter
+
+A type to limit the step size in the correction step.
+
+Restricts the Euclidean distance between the prediction and correction to be less than some `frac` of `Δs` at the current iteration.
+If the distance is larger, the correction step is rejected despite success of the Newton-Raphson solver.
+
+# Fields
+- `frac::Float64`: The fraction of the current PALC step size `Δs` that the correction step length should be less than.
+"""
+struct CorrectionStepLimiter <: AbstractStepLimiter
 
     frac::Float64
 
-    function LocalCorrectionStepLimiter(; frac=0.1)
+    @doc"""
+        function CorrectionStepLimiter(; frac=0.1)
+
+    Constructor for the correction step limiter. 
+    
+    # Kwargs
+    - `frac::Float64`: The fraction of the current PALC step size `Δs` that the correction step length should be less than. Defaults to 0.1.
+    """
+    function CorrectionStepLimiter(; frac=0.1)
         return new(frac)
     end
 
 end
 
-function enforce_local_correction(uλ, uλpred, ds, alg, sl::Nothing)
+function enforce_local_correction(correction_success, uλ, uλpred, ds, alg, sl::Nothing)
+    # If no step limiter, allow step to proceed
     return false
 end
 
-function enforce_local_correction(uλ, uλpred, ds, alg, sl::AbstractStepLimiter)
+function enforce_local_correction(correction_success, uλ, uλpred, ds, alg, sl::AbstractStepLimiter)
     error("Unrecognized correction step limiter!")
     return false
 end
 
-function enforce_local_correction(uλ, uλpred, ds, alg, sl::LocalCorrectionStepLimiter)
-    n = length(uλ)-1
-    reject_step = alg.inner_prod(view(uλ,1:n)-view(uλpred, 1:n), view(uλ, n)-view(uλpred, n)) / abs(ds) > sl.frac ? true : false
+function enforce_local_correction(correction_success, uλ, uλpred, ds, alg, sl::CorrectionStepLimiter)
+    reject_step=false
+    if correction_success # only want to do this check if the Newton solve was actually successful
+        n = length(uλ)-1
+        δn = sqrt(alg.inner_prod(view(uλ,1:n)-view(uλpred, 1:n), uλ[end]-uλpred[end])) # norm of change between pred and corr
+        reject_step = δn / abs(ds) > sl.frac ? true : false
+    end
     return reject_step
 end
 
@@ -95,7 +119,13 @@ function palc_correction!(
         uλ, retcode = solve_palc_nlp!(solvers, uλpred, trace)
 
         # Check if successful
-        if SciMLBase.successful_retcode(retcode) # NL solve was successful
+        correction_success = SciMLBase.successful_retcode(retcode) # NL solve was successful
+
+        # check if this step should be rejected anyway
+        reject_step = enforce_local_correction(correction_success, uλ, uλpred, cache.ds, alg, step_limiter)
+        
+
+        if correction_success && !reject_step
 
             # Check if callback triggered
             cb_trig = check(term_callback, uλ, cache, alg, p)
@@ -124,11 +154,8 @@ function palc_correction!(
                 hit_bnd = λmax
             end
 
-            # check if this step should be rejected on any addtl criteria
-            reject_step = enforce_local_correction(uλ, uλpred, cache.ds, alg, step_limiter)
-
             # Determine if done
-            if (cb_trig && !rf_succ) || !detection_success || reject_step # Triggered callback but rootfind was unsuccessful OR detection triggered and was unsuccessful
+            if (cb_trig && !rf_succ) || !detection_success # Triggered callback but rootfind was unsuccessful OR detection triggered and was unsuccessful
                 cb_trig = false
                 hit_bnd = NaN
                 if abs(cache.ds)==dsmin # check if ds=dsmin to avoid getting stuck repeating the failed rootfind
@@ -163,7 +190,7 @@ function palc_correction!(
                     scale_and_clamp_ds!(cache, 0.5, dsmin, dsmax)
                 end
             end
-        else # solve is not successful, so reduce ds
+        else # solve is not successful or step rejected, so reduce ds
             if abs(cache.ds) == dsmin
                 done = true
                 success = false
@@ -269,7 +296,12 @@ function palc_correction!(
         uλ, retcode = solve_palc_nlp!(solvers, uλpred, trace)
 
         # Check if successful
-        if SciMLBase.successful_retcode(retcode)
+        correction_success = SciMLBase.successful_retcode(retcode) # NL solve was successful
+
+        # check if this step should be rejected anyway
+        reject_step = enforce_local_correction(correction_success, uλ, uλpred, cache.ds, alg, step_limiter)
+
+        if correction_success && !reject_step
 
             # Check if callback triggered (iterating through in order)
             for jj in eachindex(term_callback.callbacks)
@@ -296,9 +328,6 @@ function palc_correction!(
             elseif uλ[end] > λmax
                 hit_bnd = λmax
             end
-
-            # check if this step should be rejected on any addtl criteria
-            reject_step = enforce_local_correction(uλ, uλpred, cache.ds, alg, step_limiter)
 
             if cb_trig && !rf_succ || !detection_success || reject_step # Triggered callback but rootfind was unsuccessful
                 cb_trig = false
@@ -334,7 +363,7 @@ function palc_correction!(
                     scale_and_clamp_ds!(cache, 0.5, dsmin, dsmax)
                 end
             end
-        else # solve is not successful
+        else # solve is not successful or step rejected
             if abs(cache.ds) == dsmin
                 done = true
                 success = false
