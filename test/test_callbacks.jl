@@ -28,6 +28,7 @@ J_min_time = (J, F, u, s) -> scalar_fun_jac!(J, F, u, s)
 f1 = (x,λ) -> -1.5-x[1] # this should trigger BEFORE first fold bifurcation
 f2 = (x,λ) -> x[1] # this would trigger AFTER first fold bifurcation
 f3 = (x,λ) -> x[1] - 100 # this should never trigger
+f4 = (x,λ) -> λ
 
 fold_bifurcation_cb = SC.FoldBifurcationTerminationCallback()
 cb1 = SC.TerminateContinuationCallback(f1)
@@ -60,6 +61,26 @@ p1 = [cache.detected_points[1][1][1], cache.detected_points[1][2]]
 p2 = [cache.detected_points[2][1][1], cache.detected_points[2][2]]
 @test isapprox(p1, [-1.0, 2/3])
 @test isapprox(p2, [1.0, -2/3])
+
+cache = continuation(
+    ContinuationProblem(
+        ContinuationFunction{Val{true}}(f_min_time, Jz_min_time, J_min_time),
+        u0,
+        λ0,
+        (λ0, 1.0),
+    ),
+    PALC(; predicter=Bordered());
+    both_sides=false,
+    ds0=1e-2,
+    dsmin=1e-2,
+    dsmax=0.1,
+    max_cont_steps=1000,
+    detection_callback=ContinuationDetectionCallback(f4), # checking for y-axis crossings
+    #trace=ContinuationAndNewtonSteps()
+)
+@test length(cache.detected_points)==3
+@test cache.ret==:HitBound # make sure we didn't erroneously stop somewhere else
+
 
 # ========== Callback Sets
 # Set 1: should terminate at fold and have retcode :Callback1

@@ -537,6 +537,14 @@ function palc_target_callback_event!(uλ, cache, alg, prob, solvers, callback, t
     ds_0 = 0.0
     ds_1 = start_ds
 
+    # Illinois modification (9/10/2026)
+    # Artificially halve the function evaluation if f_t is consecutively on the same side of the root
+    # Promotes f_t switching between alternate sides of the root, promoting convergence
+    # Dowell, Mark, and Peter Jarratt. "A modified regula falsi method for computing the root of an equation." (1971): 168-174.
+    sign_ft_prev = nothing
+    sf_f0 = 1.
+    sf_f1 = 1.
+
     # Get inputs at boundaries
     u_0 = cache.u_0
     u_1 = cache.u_1
@@ -552,10 +560,14 @@ function palc_target_callback_event!(uλ, cache, alg, prob, solvers, callback, t
     done = false
     success = false
     while !done
-        ds_t = ds_0 - f_0 * (ds_1 - ds_0) / (f_1 - f_0)
+        ds_t = ds_0 - sf_f0*f_0 * (ds_1 - ds_0) / (sf_f1*f_1 - sf_f0*f_0)
         α_t = ds_t / dotδ
         u_t .= cache.u0 .+ α_t .* cache.δu0
         λ_t = cache.λ0 + α_t * cache.δλ0
+
+        # reset scale factors
+        sf_f0 = 1.0
+        sf_f1 = 1.0
 
         cache.ds = ds_t
         cache.uλpred[1:n] .= u_t
@@ -574,17 +586,32 @@ function palc_target_callback_event!(uλ, cache, alg, prob, solvers, callback, t
 
                 # Update iterate
                 uλ .= uλ_t
-            elseif f_0 * f_t < 0
+            elseif f_0 * f_t < 0 # f_t is on opposite side of f_0
+                
+                # Illinois Modification:
+                # If f_t is on the same side of the root as the previous iteration
+                if sign_ft_prev == sign(f_t)
+                    sf_f0 = 0.5 # Scale f0 so in the next iteration
+                end
+
                 ds_1 = ds_t
                 u_1 .= view(uλ_t, 1:n)
                 λ_1 = uλ_t[end]
                 f_1 = f_t
             else
+
+                # Illinois Modification:
+                # If f_t is on the same side of the root as the previous iteration
+                if sign_ft_prev == sign(f_t)
+                    sf_f1 = 0.5
+                end
+
                 ds_0 = ds_t
                 u_0 .= view(uλ_t, 1:n)
                 λ_0 = uλ_t[end]
                 f_0 = f_t
             end
+            sign_ft_prev = sign(f_t)
         else
             done = true
         end
