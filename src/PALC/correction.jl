@@ -579,7 +579,7 @@ function palc_target_callback_event!(uλ, cache, alg, prob, solvers, callback, t
             # Call the callback function
             f_t = call!(callback, uλ_t, cache, alg, prob)
 
-            if abs(ds_1 - ds_0) < callback.tol
+            if abs(ds_1 - ds_0) < callback.tol || iszero(f_t) # if its exactly zero we can terminate
                 # Set flags
                 done = true
                 success = true
