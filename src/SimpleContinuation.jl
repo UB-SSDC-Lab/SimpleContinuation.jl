@@ -35,7 +35,7 @@ export Bordered, Secant
 export ContinuationFunction, SparseContinuationFunction
 export ContinuationProblem
 
-export TerminateContinuationCallback, AnalysisContinuationCallback, TerminateContinuationCallbackSet
+export TerminateContinuationCallback, AnalysisContinuationCallback, TerminateContinuationCallbackSet, ContinuationDetectionCallback
 export FoldBifurcationTerminationCallback, FoldBifurcationDetectionCallback
 
 export CorrectionStepLimiter

@@ -77,9 +77,22 @@ mutable struct InternalTerminateContinuationCallback{FType} <:
     end
 end
 
-# This callback is functionally identical to the InternalTerminateContinuationCallback, in terms of the fact that
+# Callback sets
+mutable struct TerminateContinuationCallbackSet{T<:Tuple} <: RootSolveContinuationCallback
+    callbacks::T # Each argument should be a RootSolveContinuationCallback, or else errors will occur later
+    # the user CAN costruct with a tuple of anything, but should use the below constructor with varargs
+end
+
+# don't need to do any handling like in SciMLBase, since we only have 1 type of callback for now
+function TerminateContinuationCallbackSet(callbacks::Union{RootSolveContinuationCallback, Nothing}...)
+    TerminateContinuationCallbackSet(callbacks)
+end
+
+# ==== Detection Callbacks
+# This callback (InternalDetectionCallback) is functionally identical to the InternalTerminateContinuationCallback, in terms of the fact that
 # it is an internal-only callback that has root-solve functionality, but it callbacks of this type will not
 # terminate the calculated point, but rather save it to the cache. This will let us save folds without restarting the algorithm, for instance.
+# Additionally, all "detection" callbacks allocate some extra storage so that they don't alter the state of the continuation.
 mutable struct InternalDetectionCallback{FType} <: InternalRootSolveContinuationCallback
     # The callback function
     f::FType # Takes the current iterate as arguments and returns Float64
@@ -92,6 +105,7 @@ mutable struct InternalDetectionCallback{FType} <: InternalRootSolveContinuation
 
     # Cache for the iterate to use within the root-find, so the true iterate isn't overwritten
     uλ::Vector{Float64}
+    uλpred::Vector{Float64}
 
     point_type::Symbol # symbol to denote type of detected point (e.g., :Fold for fold bifurcations)
 
@@ -104,19 +118,81 @@ mutable struct InternalDetectionCallback{FType} <: InternalRootSolveContinuation
             (Tuple{Vector{Float64},Float64,typeof(cache),typeof(alg),typeof(prob)},),
             (Float64,),
         )
-        return new{typeof(fwrap)}(fwrap, NaN, tol, similar(cache.uλ0), point_type)
+        return new{typeof(fwrap)}(fwrap, NaN, tol, similar(cache.uλ0), similar(cache.uλ0), point_type)
     end
 end
 
-# Callback sets
-mutable struct TerminateContinuationCallbackSet{T<:Tuple} <: RootSolveContinuationCallback
-    callbacks::T # Each argument should be a RootSolveContinuationCallback, or else errors will occur later
-    # the user CAN costruct with a tuple of anything, but should use the below constructor with varargs
+# User-defined Detection callback
+"""
+    ContinuationDetectionCallback
+
+Save points when a user-provided callback equals zero. Saves to `cache.detected_points`
+
+When a sign change in the user-provided function is detected, a regula-falsi solver finds the precise point
+where the callback is satisfied, then saves the found point.
+"""
+mutable struct ContinuationDetectionCallback{FType} <: UserRootSolveContinuationCallback
+    # The callback function
+    f::FType # Takes the current iterate as arguments and returns Float64
+
+    # Current and previous callback value
+    val_0::Float64
+
+    # Tolerance
+    tol::Float64
+
+    @doc"""
+        ContinuationDetectionCallback(f::F; tol=1e-12)
+    
+    Constructor for `ContinuationDetectionCallback`.
+    
+    # Arguments
+    - `f::Function`: user defined callabck function of form f(u,λ)
+
+    # Kwargs
+    - `tol::Float`: Tolerance for regula-falsi solver. Defaults to 1e-12.
+
+    # Examples
+    ```julia
+    cb_fun = (u, λ) -> u[1] # terminate when first unknown is zero
+    cb = ContinuationDetectionCallback(cb_fun)
+    ```
+    """
+    function ContinuationDetectionCallback(f::F; tol=1e-12) where {F<:Function}
+        fwrap = FunctionWrappersWrapper(f, (Tuple{Vector{Float64},Float64},), (Float64,))
+        return new{typeof(fwrap)}(fwrap, NaN, tol)
+    end
 end
 
-# don't need to do any handling like in SciMLBase, since we only have 1 type of callback for now
-function TerminateContinuationCallbackSet(callbacks::Union{RootSolveContinuationCallback, Nothing}...)
-    TerminateContinuationCallbackSet(callbacks)
+# Detection callbacks need extra allocated storage, since we want them to not interfere with the cache, which we don't want the user to allocate themselves
+# Therefore, we'll do a similar process to the fold callbacks, where we'll have another type that's kept internal
+# and constructed based on the user-defined ContinuationDetectionCallback (see the handle_detection_callback method for this type)
+mutable struct UserDetectionCallback{FType} <: UserRootSolveContinuationCallback
+
+    # The callback function
+    f::FType # Takes the current iterate as arguments and returns Float64
+
+    # Current and previous callback value
+    val_0::Float64
+
+    # Tolerance
+    tol::Float64
+
+    # cache for iterate
+    uλ::Vector{Float64}
+    uλpred::Vector{Float64}
+
+    # 
+    point_type::Symbol
+
+    # Constructer
+    function UserDetectionCallback(
+        fwrap::F, cache, point_type; tol=1e-12
+    ) where {F}
+        # We've already wrapped the function when the user defined the callback, so no need here
+        return new{typeof(fwrap)}(fwrap, NaN, tol, similar(cache.uλ0), similar(cache.uλ0), point_type)
+    end
+
 end
 
 # Simple continuation callback for analyzing the status of the continuation process.
@@ -221,16 +297,21 @@ function handle_detection_callback(cb, cache, alg, p)
     return cb
 end
 
+function handle_detection_callback(cb::ContinuationDetectionCallback, cache, alg, p)
+    return UserDetectionCallback(cb.f, cache, :Custom; tol=cb.tol)
+end
+
 function perform_detection_callback!(cache, alg, prob, solvers, callback::Nothing, uλ, λmax, λmin, trace)
     return true
 end
 
-function perform_detection_callback!(cache, alg, prob, solvers, callback::InternalDetectionCallback, uλc, λmax, λmin, trace)
+function perform_detection_callback!(cache, alg, prob, solvers, callback, uλc, λmax, λmin, trace)
     # If the success is false, the step-size will be halved and step will be retried
     det_success = false
     
-    # store original value of iterate
+    # store original value of iterate and prediction (these get altered in palc_target_callback_event)
     callback.uλ .= uλc
+    callback.uλpred .= cache.uλpred
 
     # Check callback
     cb_trig = check(callback, uλc, cache, alg, prob)
@@ -258,6 +339,7 @@ function perform_detection_callback!(cache, alg, prob, solvers, callback::Intern
 
     # reset iterate to original value
     uλc .= callback.uλ
+    cache.uλpred = callback.uλpred
 
     return det_success
 
