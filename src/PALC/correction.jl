@@ -587,9 +587,11 @@ function palc_target_callback_event!(uλ, cache, alg, prob, solvers, callback, t
                 # Update iterate
                 uλ .= uλ_t
             elseif f_0 * f_t < 0 # f_t is on opposite side of f_0
-
-                if sign_ft_prev == sign(f_t) # if sign remains unchanged
-                    sf_f0 = 0.5
+                
+                # Illinois Modification:
+                # If f_t is on the same side of the root as the previous iteration
+                if sign_ft_prev == sign(f_t)
+                    sf_f0 = 0.5 # Scale f0 so in the next iteration
                 end
 
                 ds_1 = ds_t
@@ -598,6 +600,8 @@ function palc_target_callback_event!(uλ, cache, alg, prob, solvers, callback, t
                 f_1 = f_t
             else
 
+                # Illinois Modification:
+                # If f_t is on the same side of the root as the previous iteration
                 if sign_ft_prev == sign(f_t)
                     sf_f1 = 0.5
                 end
