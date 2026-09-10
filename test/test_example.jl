@@ -67,3 +67,16 @@ det = cache.detected_points[1]
 dp = (det[1], det[2])
 @test isapprox(dp[1], cache.br[end][1])
 @test isapprox(dp[2], cache.br[end][2])
+
+# lets also run it with a step limiter
+cache = continuation(
+    prob,
+    alg;
+    both_sides=false,
+    ds0=1e-2,
+    dsmin=1e-2,
+    dsmax=0.1,
+    max_cont_steps=1000,
+    detection_callback=FoldBifurcationDetectionCallback(),
+    step_limiter=CorrectionStepLimiter()
+)

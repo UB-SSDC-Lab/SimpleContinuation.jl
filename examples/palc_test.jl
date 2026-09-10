@@ -81,6 +81,7 @@ cache = continuation(
     #trace=ContinuationAndNewtonSteps(),
     detection_callback = FoldBifurcationDetectionCallback(),
     dsmax=0.01,
+    step_limiter = CorrectionStepLimiter(;frac=.01)
 )
 
 fig = Figure()

@@ -15,7 +15,8 @@ function continuation(
     analysis_callback=nothing,
     detection_callback=nothing,
     trace=Silent(),
-    save_verbose=false
+    save_verbose=false,
+    step_limiter=nothing
 )
     # Construct PALC Cache
     cache = PALCCache(p, alg, ds0)
@@ -43,7 +44,8 @@ function continuation(
         analysis_callback,
         handled_detection_callback,
         trace,
-        save_verbose
+        save_verbose,
+        step_limiter
     )
     if both_sides
         prepare_continuation_in_reverse_direction!(cache, ds0)
@@ -59,7 +61,8 @@ function continuation(
             analysis_callback,
             handled_detection_callback,
             trace,
-            save_verbose
+            save_verbose,
+            step_limiter
         )
     end
 
@@ -78,7 +81,8 @@ function continuation!(
     analysis_callback,
     detection_callback,
     trace,
-    save_verbose
+    save_verbose,
+    step_limiter
 )
     # Initialize the callback(s)
     initialize!(term_callback, cache, alg, p)
@@ -96,7 +100,7 @@ function continuation!(
 
         # Perform correction step
         success, terminate_continuation = palc_correction!(
-            cache, alg, p, solvers, dsmin, dsmax, term_callback, analysis_callback, detection_callback, trace
+            cache, alg, p, solvers, dsmin, dsmax, term_callback, analysis_callback, detection_callback, step_limiter, trace
         )
 
         # Save addtl info
