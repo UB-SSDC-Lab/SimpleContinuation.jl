@@ -59,16 +59,28 @@ cache = continuation(
     dsmax=0.1,
     max_cont_steps=1000,
     detection_callback=FoldBifurcationDetectionCallback(),
-    term_callback = FoldBifurcationTerminationCallback(),
 )
 ld = length(cache.detected_points)
-@test ld == 1
-det = cache.detected_points[1]
-dp = (det[1], det[2])
-@test isapprox(dp[1], cache.br[end][1])
-@test isapprox(dp[2], cache.br[end][2])
+@test ld == 2
+det = cache.detected_points[1] # the first fold encountered
+dp1 = (det[1], det[2])
 
-# lets also run it with a step limiter
+# Lets now terminate at the fold, and ensure both callbacks find the same point
+cache1 = continuation(
+    prob,
+    alg;
+    both_sides=false,
+    ds0=1e-2,
+    dsmin=1e-2,
+    dsmax=0.1,
+    max_cont_steps=1000,
+    term_callback=FoldBifurcationTerminationCallback(),
+)
+@test isapprox(dp1[1], cache1.br[end][1])
+@test isapprox(dp1[2], cache1.br[end][2])
+
+# lets  do the same with use_det=false
+# also, add a step limiter
 cache = continuation(
     prob,
     alg;
@@ -77,6 +89,29 @@ cache = continuation(
     dsmin=1e-2,
     dsmax=0.1,
     max_cont_steps=1000,
-    detection_callback=FoldBifurcationDetectionCallback(),
+    detection_callback=FoldBifurcationDetectionCallback(; use_det=false),
     step_limiter=CorrectionStepLimiter()
 )
+ld = length(cache.detected_points)
+@test ld == 2
+det = cache.detected_points[1] # the first fold encountered
+dp2 = (det[1], det[2])
+# Lets now terminate at the fold, and ensure both callbacks find the same point
+cache2 = continuation(
+    prob,
+    alg;
+    both_sides=false,
+    ds0=1e-2,
+    dsmin=1e-2,
+    dsmax=0.1,
+    max_cont_steps=1000,
+    term_callback=FoldBifurcationTerminationCallback(; use_det=false),
+)
+@test isapprox(dp2[1], cache2.br[end][1])
+@test isapprox(dp2[2], cache2.br[end][2])
+
+# lastly, check that things match between different detection methods
+@test isapprox(dp1[1], dp2[1])
+@test isapprox(dp1[2], dp2[2])
+@test isapprox(cache1.br[end][1], cache2.br[end][1])
+@test isapprox(cache1.br[end][2], cache2.br[end][2])
