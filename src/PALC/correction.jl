@@ -191,7 +191,7 @@ function palc_correction!(
                 end
             end
         else # solve is not successful or step rejected, so reduce ds
-            if abs(cache.ds) == dsmin
+            if abs(cache.ds) <= dsmin
                 done = true
                 success = false
                 set_min_stepsize_retcode!(cache) # update ret with 'done' condition. This won't be overwritten since success=false (see continuation.jl) 
@@ -364,7 +364,7 @@ function palc_correction!(
                 end
             end
         else # solve is not successful or step rejected
-            if abs(cache.ds) == dsmin
+            if abs(cache.ds) <= dsmin
                 done = true
                 success = false
                 set_min_stepsize_retcode!(cache) # update ret with 'done' condition. This won't be overwritten since success=false (see continuation.jl) 
