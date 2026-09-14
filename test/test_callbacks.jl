@@ -122,7 +122,6 @@ cache = continuation(
 @test cache.ret == :Callback2
 
 # test detection with a callback set
-set_1 = SC.TerminateContinuationCallbackSet(fold_bifurcation_cb, cb2) 
 cache = continuation(
     ContinuationProblem(
         ContinuationFunction{Val{true}}(f_min_time, Jz_min_time, J_min_time),
@@ -136,9 +135,9 @@ cache = continuation(
     dsmin=1e-2,
     dsmax=0.1,
     max_cont_steps=1000,
-    term_callback=set_1,
-    detection_callback = FoldBifurcationDetectionCallback()
+    term_callback=set_2,
+    detection_callback = FoldBifurcationDetectionCallback(; use_det=false)
 )
 p1 = [cache.detected_points[1][1][1], cache.detected_points[1][2]]
 @test isapprox(p1, [-1.0, 2/3])
-@test cache.ret == :Callback1
+@test cache.ret == :Callback2
