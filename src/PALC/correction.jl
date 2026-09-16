@@ -29,23 +29,20 @@ struct CorrectionStepLimiter <: AbstractStepLimiter
 
 end
 
-function enforce_local_correction(correction_success, uλ, uλpred, ds, alg, sl::Nothing)
+function enforce_local_correction(correction_success, uλ, uλpred, ds, alg, sl::Nothing, hit_bnd)
     # If no step limiter, allow step to proceed
     return false
 end
 
-function enforce_local_correction(correction_success, uλ, uλpred, ds, alg, sl::AbstractStepLimiter)
-    error("Unrecognized correction step limiter!")
-    return false
-end
-
-function enforce_local_correction(correction_success, uλ, uλpred, ds, alg, sl::CorrectionStepLimiter)
+function enforce_local_correction(correction_success, uλ, uλpred, ds, alg, sl::CorrectionStepLimiter, hit_bnd)
     reject_step=false
-    if correction_success # only want to do this check if the Newton solve was actually successful
+
+    if correction_success && isnan(hit_bnd) # and only check if newton succeeded and we didn't hit a bound, since step sizes can get very small (see: zero) if the iterate happens to lie close to one.
         n = length(uλ)-1
         δn = sqrt(alg.inner_prod(view(uλ,1:n)-view(uλpred, 1:n), uλ[end]-uλpred[end])) # norm of change between pred and corr
         reject_step = δn / abs(ds) > sl.frac ? true : false
     end
+
     return reject_step
 end
 
@@ -122,8 +119,7 @@ function palc_correction!(
         correction_success = SciMLBase.successful_retcode(retcode) # NL solve was successful
 
         # check if this step should be rejected anyway
-        reject_step = enforce_local_correction(correction_success, uλ, uλpred, cache.ds, alg, step_limiter)
-        
+        reject_step = enforce_local_correction(correction_success, uλ, uλpred, cache.ds, alg, step_limiter, hit_bnd)
 
         if correction_success && !reject_step
 
@@ -191,7 +187,7 @@ function palc_correction!(
                 end
             end
         else # solve is not successful or step rejected, so reduce ds
-            if abs(cache.ds) <= dsmin
+            if abs(cache.ds) == dsmin
                 done = true
                 success = false
                 set_min_stepsize_retcode!(cache) # update ret with 'done' condition. This won't be overwritten since success=false (see continuation.jl) 
@@ -299,7 +295,7 @@ function palc_correction!(
         correction_success = SciMLBase.successful_retcode(retcode) # NL solve was successful
 
         # check if this step should be rejected anyway
-        reject_step = enforce_local_correction(correction_success, uλ, uλpred, cache.ds, alg, step_limiter)
+        reject_step = enforce_local_correction(correction_success, uλ, uλpred, cache.ds, alg, step_limiter, hit_bnd)
 
         if correction_success && !reject_step
 
@@ -329,7 +325,7 @@ function palc_correction!(
                 hit_bnd = λmax
             end
 
-            if cb_trig && !rf_succ || !detection_success || reject_step # Triggered callback but rootfind was unsuccessful
+            if cb_trig && !rf_succ || !detection_success # Triggered a callback but rootfind was unsuccessful
                 cb_trig = false
                 hit_bnd = NaN
                 if abs(cache.ds)==dsmin # check if ds=dsmin to avoid getting stuck repeating the failed rootfind
@@ -364,7 +360,7 @@ function palc_correction!(
                 end
             end
         else # solve is not successful or step rejected
-            if abs(cache.ds) <= dsmin
+            if abs(cache.ds) == dsmin
                 done = true
                 success = false
                 set_min_stepsize_retcode!(cache) # update ret with 'done' condition. This won't be overwritten since success=false (see continuation.jl) 

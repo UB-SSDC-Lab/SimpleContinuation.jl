@@ -106,6 +106,7 @@ cache2 = continuation(
     dsmax=0.1,
     max_cont_steps=1000,
     term_callback=FoldBifurcationTerminationCallback(; use_det=false),
+    trace=ContinuationSteps() # print steps for coverage
 )
 @test isapprox(dp2[1], cache2.br[end][1])
 @test isapprox(dp2[2], cache2.br[end][2])
@@ -115,3 +116,22 @@ cache2 = continuation(
 @test isapprox(dp1[2], dp2[2])
 @test isapprox(cache1.br[end][1], cache2.br[end][1])
 @test isapprox(cache1.br[end][2], cache2.br[end][2])
+
+# Test for the step limiter with bad inputs
+prob = ContinuationProblem(
+        ContinuationFunction{Val{true}}(f_min_time, Jz_min_time, J_min_time),
+        u0,
+        λ0+1e-3, # start right next to the boundary
+        (λ0, 1.0),
+)
+continuation(
+    prob,
+    alg;
+    both_sides=false,
+    ds0=-1e-2, # step directly into the boundary that we start near
+    dsmin=1e-2,
+    dsmax=1e-2,
+    max_cont_steps=1000,
+    step_limiter = CorrectionStepLimiter(; frac=1e-6),
+    trace=ContinuationAndNewtonSteps()
+)
