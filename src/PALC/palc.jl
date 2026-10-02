@@ -71,7 +71,7 @@ end
 
 A cache for the PALC algorithm.
 
-This cache includes all preallocated storage required for PALC. It also contains the zero curve (solution), return code, and any special detected points.
+This cache includes all preallocated storage required for PALC. It also contains the zero curve (solution), return code, and any special detected points. This cache is not directly exported, but it is returned by `continuation` methods.
 
 # Fields
 - `ds::Float64`: PALC step size

@@ -3,6 +3,20 @@ abstract type AbstractContinuationFunction end
 # A container for user provided functions. For now, we're just 
 # going to handle functions involvng vectors and matrices of Float64s,
 # or views thereof. More functionality can be added later as needed.
+"""
+    ContinuationFunction
+
+A container for user provided functions.
+
+# Fields:
+- `f::Function`: the function handle
+- `Ju::Function`: handle for the jacobian of `f` with respect to the unknowns `u`
+- `Jλ::Function`: handle for the jacobian of `f` with respect to the parameter `λ`
+- `J::Function`: Handle for the non-square jacobian of `f` with respect to both `u` and `λ`.
+
+# Returns
+- `cf::ContinuationFunction`: new ContinuationFunction instance
+"""
 struct ContinuationFunction{has_full_J,FType,JuType,JλType,JType} <:
        AbstractContinuationFunction
     f::FType
@@ -65,6 +79,20 @@ struct ContinuationFunction{has_full_J,FType,JuType,JλType,JType} <:
             fwrap, Juwrap, Jλwrap, nothing
         )
     end
+
+    @doc"""
+        ContinuationFunction(f, Ju, Jλ)
+
+    Constructor for a continuation function where the full jacobian `J` has not been provided.
+
+    # Arguments
+    - `f::Function`: the function handle
+    - `Ju::Function`: handle for the jacobian of `f` with respect to the unknowns `u`.
+    - `Jλ::Function`: handle for the jacobian of `f` with respect to the parameter `λ`. 
+
+    # Returns
+    - `cf::ContinuationFunction`: new ContinuationFunction instance
+    """
     function ContinuationFunction(
         f::Fi, Ju::Jui, Jλ::Jλi
     ) where {Fi<:Function,Jui<:Function,Jλi<:Function}
@@ -99,11 +127,37 @@ struct ContinuationFunction{has_full_J,FType,JuType,JλType,JType} <:
             fwrap, nothing, nothing, Jwrap
         )
     end
+
+    @doc"""
+        ContinuationFunction(f, J)
+
+    Constructor for a continuation function where only the full jacobian `J` has not been provided.
+
+    # Arguments
+    - `f::Function`: the function handle
+    - `J::Function`: Handle for the non-square jacobian of `f` with respect to both `u` and `λ`.
+
+    # Returns
+    - `cf::ContinuationFunction`: new ContinuationFunction instance
+    """
     function ContinuationFunction(f::Fi, J::Ji) where {Fi<:Function,Ji<:Function}
         return ContinuationFunction{Val{true}}(f, J)
     end
 
     # User provided function and Jacobian wrt u and full Jacobian
+    @doc"""
+        ContinuationFunction{Val{true}}(f, Ju, J)
+
+    Constructor for a continuation function where the full jacobian is provided along with the jacobian of `f` wrt `u`. Note that `Val{true}` must be specified to use this method.
+
+    # Arguments
+    - `f::Function`: the function handle
+    - `Ju::Function`: handle for the jacobian of `f` with respect to the unknowns `u`.
+    - `J::Function`: Handle for the non-square jacobian of `f` with respect to both `u` and `λ`.
+
+    # Returns
+    - `cf::ContinuationFunction`: new ContinuationFunction instance
+    """
     function ContinuationFunction{has_full_J}(
         f::Fi, Ju::Jui, J::Ji
     ) where {has_full_J<:Val{true},Fi<:Function,Jui<:Function,Ji<:Function}

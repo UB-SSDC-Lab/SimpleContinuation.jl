@@ -1,6 +1,12 @@
-# Problems
+# Problem Definition
 
-The first step of solving any problem is to define the `ContinuationProblem` you would like to solve.
+## Continuation Functions
+```@autodocs
+Modules = [SimpleContinuation]
+Pages = ["function.jl"]
+```
+
+## Continuation Problems
 ```@autodocs
 Modules = [SimpleContinuation]
 Pages = ["problem.jl"]
