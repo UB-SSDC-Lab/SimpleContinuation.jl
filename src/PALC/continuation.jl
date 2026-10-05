@@ -1,4 +1,29 @@
+"""
+    continuation(p::ContinuationProblem, alg::PALC; kwargs...)
 
+Function to run the continuation loop with PALC.
+
+# Arguments
+- `p::ContinuationProblem`: The continuation problem to solve.
+- `alg::PALC`: The PALC algorithm to use for continuation.
+
+# Kwargs
+- `both_sides::Bool=false`: Whether to continue in both directions of the continuation parameter.
+- `ds0::Float64=1e-2`: Initial step size for continuation.
+- `dsmin::Float64=1e-6`: Minimum step size for continuation.
+- `dsmax::Float64=1.0`: Maximum step size for continuation.
+- `initial_tangent::AbstractInitialTangent=SecantInitialTangent()`: The method to compute the initial tangent vector.
+- `max_cont_steps::Int=1000`: Maximum number of continuation steps to perform.
+- `newton_iter::Int=10`: Maximum number of Newton iterations for the correction step.
+- `newton_tol::Float64=1e-10`: Tolerance for Newton iterations
+- `newton_max_resid::Float64=1.0`: Maximum residual for Newton iterations.
+- `term_callback::Union{Nothing, AbstractContinuationCallback}=nothing`: A callback function to determine when to terminate the continuation process.
+- `analysis_callback::Union{Nothing, AnalysisContinuationCallback}=nothing`: A callback function to perform analysis at each continuation step.
+- `detection_callback::Union{Nothing, AbstractContinuationCallback}=nothing`: A callback function to detect specific events during continuation.
+- `trace::AbstractTraceLevel=Silent()`: An object to handle tracing/logging of the continuation process.
+- `save_verbose::Bool=false`: Whether to save additional information at each step for verbose output.
+- `step_limiter::Union{Nothing, CorrectionStepLimiter}=nothing`: A step limiter to control the size of the correction step.
+"""
 function continuation(
     p::ContinuationProblem,
     alg::PALC;

@@ -18,6 +18,7 @@ makedocs(;
         "Home" => "index.md",
         "Examples"=>["example/basic_example.md"],
         "Public API"=>[
+            "public/continuation.md",
             "public/problem.md", 
             "public/PALC.md",
             "public/callbacks.md"

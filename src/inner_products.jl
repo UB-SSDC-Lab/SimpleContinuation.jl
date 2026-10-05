@@ -4,9 +4,22 @@
 abstract type AbstractInnerProduct end
 
 # Unscaled dot product norm
+"""
+    StandardDotProduct <: AbstractInnerProduct
+
+A standard, unscaled Euclidean inner product. This is the default inner product used in PALC.
+"""
 struct StandardDotProduct <: AbstractInnerProduct end
 
 # Scaled dot product norm
+"""
+    ScaledInnerProduct <: AbstractInnerProduct
+
+A scaled Euclidean inner product. The scaling factor `θ` scales the relative contributions of the unknowns and the continuation parameter to the inner product.
+
+# Fields
+- `θ::Float64`: The scaling factor for the inner product. Must be in [0,1].
+"""
 struct ScaledInnerProduct <: AbstractInnerProduct
     θ::Float64
     function ScaledInnerProduct(θ::Float64=0.5)
@@ -18,6 +31,14 @@ struct ScaledInnerProduct <: AbstractInnerProduct
 end
 
 # Double Scaled dot product norm
+"""
+    DoubleScaledInnerProduct <: AbstractInnerProduct
+
+A double scaled Euclidean inner product. The scaling factor `θ` scales the relative contributions of the unknowns and the continuation parameter to the inner product.
+
+# Fields
+- `θ::Float64`: The scaling factor for the inner product. Must be in [0,1].
+"""
 struct DoubleScaledInnerProduct <: AbstractInnerProduct
     θ::Float64
     function DoubleScaledInnerProduct(θ::Float64=0.5)
@@ -29,6 +50,14 @@ struct DoubleScaledInnerProduct <: AbstractInnerProduct
 end
 
 # Scaled BifurcationKit norm
+"""
+    BifurcationKitInnerProduct <: AbstractInnerProduct
+
+A scaled Euclidean inner product used in [BifurcationKit.jl](https://github.com/bifurcationkit). 
+
+# Fields
+- `θ::Float64`: The scaling factor for the inner product. Must be in [0,1].
+"""
 struct BifurcationKitInnerProduct <: AbstractInnerProduct
     θ::Float64
     function BifurcationKitInnerProduct(θ::Float64=0.5)

@@ -2,20 +2,64 @@
 abstract type AbstractInitialTangent end
 
 # Constructs initial tangent using the secant method with a single natural continuation step
+"""
+    SecantInitialTangent <: AbstractInitialTangent
+
+Constructs initial tangent using the secant method with a single natural continuation step.
+
+# Fields 
+- `step_scale_factor::Float64`: The scale factor used to perturb the natural continuation parameter, as a fraction of the initial step size.
+"""
 struct SecantInitialTangent <: AbstractInitialTangent
     step_scale_factor::Float64
+
+    @doc"""
+        SecantInitialTangent(; step_scale_factor=1e-6)
+    
+    Constructor for `SecantInitialTangent`.
+    
+    # Kwargs
+    - `step_scale_factor::Float64`: The scale factor used to perturb the natural continuation parameter, as a fraction of the initial step size. Default: `1e-6`
+    """
     function SecantInitialTangent(; step_scale_factor=1e-6)
         new(step_scale_factor)
     end
 end
 
 # Constructs initial tangent using the bordered method, using every base-vector
+"""
+    BorderedInitialTangent{I} <: AbstractInitialTangent
+
+Constructs initial tangent using the bordered method, using every base-vector.
+
+# Fields
+- `positive_search_order::Bool`: Whether to search for a base-vector in the positive or negative direction. Default: `true`
+- `search_order::I`: A user provided vector of integers specifying the order in which to search for a base-vector. If not provided, the default is to search in the positive direction.
+"""
 struct BorderedInitialTangent{I} <: AbstractInitialTangent
     positive_search_order::Bool
     search_order::I
+
+    @doc"""
+        BorderedInitialTangent(; positive_search_order=true)
+
+    Constructor for `BorderedInitialTangent`. Sets `search_order` to `nothing`. See struct docs for details.
+    
+    # Kwargs
+    - `positive_search_order::Bool`: Whether to search for a base-vector in the positive or negative direction. Default: `true`
+    """
     function BorderedInitialTangent(; positive_search_order=true)
         new{Nothing}(positive_search_order, nothing)
     end
+
+    @doc"""
+        BorderedInitialTangent(search_order::I) where {I<:AbstractVector}
+
+    Constructor for `BorderedInitialTangent`. Sets `positive_search_order` to `true`. See struct docs for details.
+    
+    # Arguments
+    - `search_order::I`: A user provided vector of integers specifying the order in which to search for a base-vector. Must be an integer vector.
+    """
     function BorderedInitialTangent(search_order::I) where {I<:AbstractVector}
         if !(eltype(search_order) <: Integer)
             throw(ArgumentError("The search order must be an integer vector!"))
@@ -30,8 +74,22 @@ function get_search_order(bit::BorderedInitialTangent, n)
     return bit.search_order
 end
 
+"""
+    UserInitialTangent <: AbstractInitialTangent
+
+Constructs initial tangent using a user provided tangent vector.
+"""
 struct UserInitialTangent <: AbstractInitialTangent
     initial_tangent::Vector{Float64}
+
+    @doc"""
+        UserInitialTangent(user_initial_tangent::AbstractVector)
+    
+    Constructor for `UserInitialTangent`. See struct docs for details.
+
+    # Arguments
+    - `user_initial_tangent::AbstractVector`: A user provided tangent vector. Must be a vector of length n + 1, where n is the dimension of the system.
+    """
     function UserInitialTangent(user_initial_tangent)
         initial_tangent = Vector{Float64}(undef, length(user_initial_tangent))
         initial_tangent .= user_initial_tangent

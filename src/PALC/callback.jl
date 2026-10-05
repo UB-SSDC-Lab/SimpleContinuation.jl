@@ -197,11 +197,25 @@ end
 
 # Simple continuation callback for analyzing the status of the continuation process.
 # Has no zero finding functionality
+
+"""
+    AnalysisContinuationCallback <: AbstractContinuationCallback
+
+Callback for analyzing the status of the continuation process, called at each step. Does not have root-finding functionality, and only allows for analysis of the `cache`.
+"""
 struct AnalysisContinuationCallback{FType} <: AbstractContinuationCallback
     # The callback function
     f::FType # Takes the continuation cache as single argument and returns Float64
 
     # Constructer
+    @doc"""
+        AnalysisContinuationCallback(f::F) where {F<:Function}
+
+    Constructor for `AnalysisContinuationCallback`. See struct docs for details.
+
+    # Arguments
+    - `f::Function`: user defined callabck function of form f(cache::PALCCache).
+    """
     function AnalysisContinuationCallback(f::F) where {F<:Function}
         fwrap = FunctionWrappersWrapper(f, (Tuple{PALCCache},), (Nothing,))
         return new{typeof(fwrap)}(fwrap)
