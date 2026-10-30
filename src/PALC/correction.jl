@@ -29,18 +29,19 @@ struct CorrectionStepLimiter <: AbstractStepLimiter
 
 end
 
-function enforce_local_correction(correction_success, uλ, uλpred, ds, alg, sl::Nothing, hit_bnd)
+function enforce_local_correction(correction_success, uλ, uλpred, ds, alg, sl::Nothing, hit_bnd, trace)
     # If no step limiter, allow step to proceed
     return false
 end
 
-function enforce_local_correction(correction_success, uλ, uλpred, ds, alg, sl::CorrectionStepLimiter, hit_bnd)
+function enforce_local_correction(correction_success, uλ, uλpred, ds, alg, sl::CorrectionStepLimiter, hit_bnd, trace)
     reject_step=false
 
     if correction_success && isnan(hit_bnd) # and only check if newton succeeded and we didn't hit a bound, since step sizes can get very small (see: zero) if the iterate happens to lie close to one.
         n = length(uλ)-1
         δn = sqrt(alg.inner_prod(view(uλ,1:n)-view(uλpred, 1:n), uλ[end]-uλpred[end])) # norm of change between pred and corr
         reject_step = δn / abs(ds) > sl.frac ? true : false
+        print_step_limiter_trace(sl, reject_step, trace)
     end
 
     return reject_step
@@ -119,7 +120,7 @@ function palc_correction!(
         correction_success = SciMLBase.successful_retcode(retcode) # NL solve was successful
 
         # check if this step should be rejected anyway
-        reject_step = enforce_local_correction(correction_success, uλ, uλpred, cache.ds, alg, step_limiter, hit_bnd)
+        reject_step = enforce_local_correction(correction_success, uλ, uλpred, cache.ds, alg, step_limiter, hit_bnd, trace)
 
         if correction_success && !reject_step
 
@@ -295,7 +296,7 @@ function palc_correction!(
         correction_success = SciMLBase.successful_retcode(retcode) # NL solve was successful
 
         # check if this step should be rejected anyway
-        reject_step = enforce_local_correction(correction_success, uλ, uλpred, cache.ds, alg, step_limiter, hit_bnd)
+        reject_step = enforce_local_correction(correction_success, uλ, uλpred, cache.ds, alg, step_limiter, hit_bnd, trace)
 
         if correction_success && !reject_step
 
@@ -428,6 +429,18 @@ function print_correction_trace(cache::PALCCache, trace::NonSilentTraceLevel, st
     elseif stage == 6
         println("Natural continuation failed")
     end
+    return nothing
+end
+
+function print_step_limiter_trace(step_limiter::CorrectionStepLimiter, rejected, trace::NonSilentTraceLevel)
+    if rejected 
+        println("Step rejected. Correction step length larger than allowable fraction of prediction ($(step_limiter.frac)). Consider increasing step limiter fraction if this step should be accepted.")
+    else
+        nothing
+    end
+    return nothing
+end
+function print_step_limiter_trace(step_limiter::CorrectionStepLimiter, rejected, trace::Silent)
     return nothing
 end
 
